@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Compiler Value="C:\FPC\3.0.0\bin\i386-win32\fpc.exe" Date="1198546589"/>
+  <Params Value=" -MObjFPC -Scghi -O1 -g -gl -l -vewnhibq &quot;-FiC:\Users\erwan\Documents\-= SOURCES =-\delphi\system\TinySSL\lib\i386-win32&quot; &quot;-FuC:\Users\erwan\Documents\-= SOURCES =-\delphi\system\TinySSL\&quot; &quot;-FUC:\Users\erwan\Documents\-= SOURCES =-\delphi\system\TinySSL\lib\i386-win32\&quot; tinySSL.lpr"/>
+</CONFIG>
