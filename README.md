@@ -1,6 +1,6 @@
 # TinySSL
 
-TinySSL, aka playsing with openssl library (libeay32).<br/>
+TinySSL, aka playing with openssl library (libeay32).<br/>
 --genkey                generate rsa keys public.pem and private.pem<br/>
 --encrypt               encrypt a file using public.pem<br/>
 --decrypt               decrypt a file using private.pem<br/>
