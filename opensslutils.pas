@@ -1008,6 +1008,7 @@ begin
 	end;
 end;
 
+//openssl rsa -noout -text -in ca.key
 function print_private(filename:string;password:string=''):boolean;
 var
    rsa:pRSA=nil;
@@ -1030,12 +1031,15 @@ var
     //
     ctx:pBN_CTX;
     p:pBIGNUM;
+    bp:pBIO;
+    n:integer=0;
 begin
 
   result:=false;
   rsa:=FromOpenSSLCert(filename);
   //try if rsa<>nil then Writeln('BN_bn2hex: ', strpas(BN_bn2hex(rsa^.n )));except end;
   //try if rsa<>nil then Writeln('BN_bn2hex: ', strpas(BN_bn2hex(rsa^.d  )));except end; //exponent
+  //n := BN_num_bytes(rsa^.e); writeln(inttostr(n)+' bytes');
   try if rsa<>nil then Writeln('BN_bn2hex E: ', BN_bn2hex(rsa^.e ));except end;
   //try if rsa<>nil then Writeln('BN_bn2hex: ', strpas(BN_bn2hex(rsa^.p   )));except end;
   //try if rsa<>nil then Writeln('BN_bn2hex: ', strpas(BN_bn2hex(rsa^.q   )));except end;
