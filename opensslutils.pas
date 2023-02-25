@@ -14,9 +14,11 @@ function generate_rsa_key:boolean;
 function mkCAcert(filename:string;cn:string;privatekey:string='';read_password:string=''):boolean;
 function mkreq(cn:string;keyfile,csrfile:string):boolean;
 function signreq(filename:string;cert:string;read_password:string='';alt:string=''):boolean;
-function selfsign(subject:string):boolean;
+function selfsign(filename:string;subject:string):boolean;
 function Convert2PEM(filename,export_pwd:string):boolean;
 function Convert2PKCS12(filename,export_pwd,privatekey,cert:string):boolean;
+function print_cert(filename:string):boolean;
+function print_private(filename:string;password:string=''):boolean;
 
 function EncryptPub(sometext:string;var encrypted:string):boolean;
 function DecryptPriv(ACryptedData:string):boolean;
@@ -327,7 +329,7 @@ begin
   result:=true;
 end;
 
-function selfsign(subject:string):boolean;
+function selfsign(filename:string;subject:string):boolean;
 var
     x:pX509 = nil;
     tmp:pX509_NAME=nil;
@@ -368,14 +370,14 @@ begin
    X509_set_pubkey(x, pkey);
    X509_sign(x, pkey, EVP_sha256 ());
 
-   bp := BIO_new_file(pchar('cert.key'), 'w+');
+   bp := BIO_new_file(pchar(ChangeFileExt (filename,'.key')), 'w+');
   //PEM_write_bio_PrivateKey(bp,pkey,EVP_des_ede3_cbc(),pchar(''),0,nil,nil);
   //if you want a prompt for passphrase
   log('PEM_write_bio_PrivateKey');
   PEM_write_bio_PrivateKey(bp,pkey,EVP_des_ede3_cbc(),nil,0,nil,nil);
   BIO_free(bp);
 
-  bp := BIO_new_file(pchar('cert.crt'), 'w+');
+  bp := BIO_new_file(pchar(filename), 'w+');
   log('PEM_write_bio_X509');
   PEM_write_bio_X509(bp,x);
   BIO_free(bp);
@@ -623,14 +625,6 @@ pkey := EVP_PKEY_new();
 //assign key to our struct
 log('EVP_PKEY_assign_RSA');
 EVP_PKEY_assign(pkey,EVP_PKEY_RSA,PCharacter(rsa));
-//Writeln('BN_bn2hex: ', strpas(BN_bn2hex(rsa^.n )));
-{
-bp := BIO_new(BIO_s_mem);
-log('BN_print');
-BN_print(bp, pkey^.pkey.rsa^.n);
-log('BIO_ReadAnsiString');
-Writeln('BN_print: ',BIO_ReadAnsiString(bp));
-}
 //OpenSSL uses the X509 structure to represent an x509 certificate in memory
 log('X509_new');
 x509 := X509_new();
@@ -1012,6 +1006,58 @@ begin
 			err := ERR_get_error;
 		until err = 0;
 	end;
+end;
+
+function print_private(filename:string;password:string=''):boolean;
+var
+   rsa:pRSA=nil;
+begin
+  result:=false;
+  rsa:=FromOpenSSLPrivateKey (filename,password); //password will be prompted
+
+  //try if rsa<>nil then Writeln('BN_bn2hex N: ', strpas(BN_bn2hex(rsa^.n )));except end;
+  //try if rsa<>nil then Writeln('BN_bn2hex D: ', strpas(BN_bn2hex(rsa^.d  )));except end; //exponent
+  try if rsa<>nil then Writeln('BN_bn2hex E: ', BN_bn2hex(rsa^.e ));except end;
+  //try if rsa<>nil then Writeln('BN_bn2hex P: ', strpas(BN_bn2hex(rsa^.p   )));except end;
+  //try if rsa<>nil then Writeln('BN_bn2hex Q: ', strpas(BN_bn2hex(rsa^.q   )));except end;
+   result:=true;
+end;
+
+//openssl x509 -noout -text -in ca.crt
+function print_cert(filename:string):boolean;
+var
+    rsa:pRSA=nil;
+    //
+    ctx:pBN_CTX;
+    p:pBIGNUM;
+begin
+
+  result:=false;
+  rsa:=FromOpenSSLCert(filename);
+  //try if rsa<>nil then Writeln('BN_bn2hex: ', strpas(BN_bn2hex(rsa^.n )));except end;
+  //try if rsa<>nil then Writeln('BN_bn2hex: ', strpas(BN_bn2hex(rsa^.d  )));except end; //exponent
+  try if rsa<>nil then Writeln('BN_bn2hex E: ', BN_bn2hex(rsa^.e ));except end;
+  //try if rsa<>nil then Writeln('BN_bn2hex: ', strpas(BN_bn2hex(rsa^.p   )));except end;
+  //try if rsa<>nil then Writeln('BN_bn2hex: ', strpas(BN_bn2hex(rsa^.q   )));except end;
+
+  //or
+  {
+  bp := BIO_new(BIO_s_mem);
+  log('BN_print');
+  BN_print(bp, rsa^.e);
+  log('BIO_ReadAnsiString');
+  Writeln('BN_print: ',BIO_ReadAnsiString(bp));
+  BIO_free(bp);
+  }
+  //test ok
+  {
+  ctx := BN_CTX_new();
+  p := BN_new();
+  BN_hex2bn(p, 'F7E75FDC469067FFDC4E847C51F452DF');
+  Writeln('BN_bn2hex: ', strpas(BN_bn2hex(p )));
+  }
+  //
+  result:=true;
 end;
 
 end.

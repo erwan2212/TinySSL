@@ -44,6 +44,9 @@ begin
   cmd.declareString('filename', 'local filename');
 
   //
+  cmd.declareflag('print_cert', 'print cert details');
+  cmd.declareflag('print_private', 'print cert details');
+
   cmd.declareflag('genkey', 'generate rsa keys public.pem and private.pem');
 
   cmd.declareflag('encrypt', 'encrypt a file using public.pem');
@@ -193,15 +196,44 @@ begin
     begin
     try
     LoadSSL;
-    //filename:=cmd.readString('filename');
-    //if filename='' then filename:='signed.crt';
+    filename:=cmd.readString('filename');
+    if filename='' then filename:='signed.crt';
     cn:=cmd.readString('cn') ;
-    if selfsign(cn)=true then writeln('ok') else writeln('not ok');
+    if cn='' then cn:='localhost';
+    if selfsign(filename,cn)=true then writeln('ok') else writeln('not ok');
     finally
     FreeSSL;
     end;
     exit;
     end;
+
+    if cmd.existsProperty('print_cert')=true then
+    begin
+    try
+    LoadSSL;
+    filename:=cmd.readString('filename');
+    if filename='' then exit;
+    if print_cert(filename)=true then writeln('ok') else writeln('not ok');
+    finally
+    FreeSSL;
+    end;
+    exit;
+    end;
+
+    if cmd.existsProperty('print_private')=true then
+    begin
+    try
+    LoadSSL;
+    filename:=cmd.readString('filename');
+    if filename='' then exit;
+    password:=cmd.readString('password') ;
+    if print_private(filename,password)=true then writeln('ok') else writeln('not ok');
+    finally
+    FreeSSL;
+    end;
+    exit;
+    end;
+
 
 
 end.
