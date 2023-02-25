@@ -465,8 +465,11 @@ begin
   rsa:=PEM_read_bio_RSAPrivateKey   (bp,nil,nil,nil);
   BIO_free(bp);
   }
+  try
   rsa:=FromOpenSSLPrivateKey(ChangeFileExt (cert,'.key'),read_password);
-  if rsa=nil then goto free_all;
+  except
+  on e:exception do begin log(e.message,1);exit;end;
+  end; //try
   //
   log('EVP_PKEY_new');
   pkey := EVP_PKEY_new();
@@ -609,7 +612,6 @@ result:=false;
   //if pkey=nil then begin log('pkey is nul');exit;end;
   try
   rsa:=FromOpenSSLPrivateKey(privatekey,read_password); //password will be prompted
-  if rsa=nil then raise exception.Create ('rsa is null');
   except
   on e:exception do begin log(e.message,1);exit;end;
   end; //try
@@ -725,7 +727,11 @@ result:=false;
     log('Reusing '+keyfile+'...',1);
     //pkey:=LoadPrivateKey(privatekey);
     //if pkey=nil then begin log('pkey is nul');exit;end;
+    try
     rsa:=FromOpenSSLPrivateKey(keyfile,''); //password will be prompted
+    except
+    on e:exception do begin log(e.message,1);exit;end;
+    end; //try
     end;
 
         //we loaded the file, no need to save it again

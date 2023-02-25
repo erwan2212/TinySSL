@@ -6,3 +6,4 @@ backup
 *.pfx
 *.o
 *.a
+*.compiled
