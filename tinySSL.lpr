@@ -150,7 +150,7 @@ begin
     cn:=cmd.readString('cn') ;
     if cn='' then cn:='_Root Authority_';
     //
-    if mkCAcert(filename,cn,privatekey,password)=true then writeln('ok') else writeln('not ok');
+    if mkCAcert(filename,cn,privatekey,password,'')=true then writeln('ok') else writeln('not ok');
     finally
     FreeSSL;
     end;

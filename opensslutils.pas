@@ -11,7 +11,7 @@ uses
 procedure LoadSSL;
 procedure FreeSSL;
 function generate_rsa_key:boolean;
-function mkCAcert(filename:string;cn:string;privatekey:string='';read_password:string=''):boolean;
+function mkCAcert(filename:string;cn:string;privatekey:string='';read_password:string='';serial:string=''):boolean;
 function mkreq(cn:string;keyfile,csrfile:string):boolean;
 function signreq(filename:string;cert:string;read_password:string='';alt:string=''):boolean;
 function selfsign(filename:string;subject:string):boolean;
@@ -581,7 +581,7 @@ These certificates are mainly used on the Windows platform.
 //openssl pkcs12 -in INFILE.p12 -out OUTFILE.crt -> encrypted private key
 //openssl pkcs12 -in INFILE.p12 -out OUTFILE.key -nodes -nocerts -> private key only
 //openssl pkcs12 -in INFILE.p12 -out OUTFILE.crt -nokeys -> cert only
-function mkCAcert(filename:string;cn:string;privatekey:string='';read_password:string=''):boolean;
+function mkCAcert(filename:string;cn:string;privatekey:string='';read_password:string='';serial:string=''):boolean;
 var
     pkey:PEVP_PKEY=nil;
     rsa:pRSA=nil;
@@ -594,6 +594,10 @@ var
     days:long = 5 * 365 * 24 * 3600; // 5 years
     //
     bc:pBASIC_CONSTRAINTS;
+    i64:int64=1;
+    asn1:pASN1_INTEGER =nil;
+    p:pBIGNUM=nil;
+    ctx:pBN_CTX=nil ;
 begin
 result:=false;
 
@@ -629,7 +633,17 @@ EVP_PKEY_assign(pkey,EVP_PKEY_RSA,PCharacter(rsa));
 log('X509_new');
 x509 := X509_new();
 //Now we need to set a few properties of the certificate
-ASN1_INTEGER_set(X509_get_serialNumber(x509), 1);
+if serial='' then  ASN1_INTEGER_set (X509_get_serialNumber(x509), i64);
+if serial<>'' then
+begin
+ctx := BN_CTX_new();
+p := BN_new();
+BN_hex2bn(p, @serial[1]);
+//openssl x509 -noout -serial -in ca.crt
+//Writeln('BN_bn2hex: ', strpas(BN_bn2hex(p )));
+asn1:=BN_to_ASN1_INTEGER (p,nil);
+X509_set_serialNumber(x509,asn1);
+end;
 //
 X509_gmtime_adj(X509_get_notBefore(x509), 0);
 X509_gmtime_adj(X509_get_notAfter(x509), days);

@@ -1,4 +1,5 @@
 rem if you want to reuse an existing key and therefore renew instead of recreate
+rem doing so, you keep your modulus and therefore the chain between root ca and child cert 
 tinySSL.exe --mkcert --debug=true --privatekey=ca.key --password=password --filename=ca.crt
 rem recreate, not renew
 rem tinySSL.exe --mkcert --debug=true --filename=ca.crt

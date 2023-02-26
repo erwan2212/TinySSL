@@ -1179,6 +1179,7 @@ function PKCS12_create(pass:pchar;name:pchar; pkey:pEVP_PKEY; cert:pX509;
 
 //
 function ASN1_INTEGER_set(a: PASN1_INTEGER; v: integer): integer; cdecl;
+function ASN1_INTEGER_set_uint64(a:pASN1_INTEGER;r:uint64):integer; cdecl;
 
 // Internal to ASN.1 and ASN.1 to internal conversion functions
 function i2a_ASN1_INTEGER(bp: pBIO; a: pASN1_INTEGER): integer; cdecl;
@@ -1332,6 +1333,7 @@ function X509_print(bp: pBIO; x: pX509): integer; cdecl;
 function X509_set_version(x: pX509; version: longint): integer; cdecl;
 function X509_get_version(x: pX509): integer;
 function X509_get_serialNumber(x: pX509): pASN1_INTEGER; cdecl;
+function X509_set_serialNumber(x: pX509; serial:pASN1_INTEGER):integer;cdecl;
 function X509_load_cert_file(ctx: pX509_LOOKUP; const filename: PCharacter;
     _type: integer): integer; cdecl;
 function X509_get_issuer_name(a: pX509): pX509_NAME; cdecl;
@@ -1928,6 +1930,7 @@ function i2d_RSAPrivateKey_bio; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}del
 function PKCS12_create; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 
 function ASN1_INTEGER_set; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
+function ASN1_INTEGER_set_uint64; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 
 function i2a_ASN1_INTEGER; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 function a2i_ASN1_INTEGER; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
@@ -2096,6 +2099,7 @@ result := ASN1_INTEGER_get(x.cert_info.version);
 end;
 
 function X509_get_serialNumber; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
+function X509_set_serialNumber; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 function X509_load_cert_file; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 function X509_get_issuer_name; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 function X509_get_subject_name; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
