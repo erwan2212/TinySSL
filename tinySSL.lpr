@@ -166,7 +166,7 @@ begin
     filename:=cmd.readString('filename');
     if filename='' then filename:='request.csr';
     privatekey:=cmd.readString('privatekey') ;
-    if privatekey='' then privatekey:='request.key';
+    //if privatekey='' then privatekey:='request.key';
     if mkreq(cn,privatekey,filename)=true then writeln('ok') else writeln('not ok');
     finally
     FreeSSL;

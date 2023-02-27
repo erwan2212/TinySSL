@@ -665,8 +665,8 @@ bc^.ca :=1;
 X509_add1_ext_i2d(x509, NID_basic_constraints,bc,1,0 ); //'critical,CA:TRUE'
 }
 
-//add_ext(x509, NID_basic_constraints, 'critical,CA:TRUE');
-//add_ext(x509, NID_key_usage, 'critical,keyCertSign,cRLSign');
+add_ext(x509, NID_basic_constraints, 'critical,CA:TRUE');
+add_ext(x509, NID_key_usage, 'critical,keyCertSign,cRLSign');
 //add_ext(x509, NID_subject_key_identifier, 'hash');
 //add_ext(x509, NID_authority_key_identifier, 'keyid:always,issuer:always');
 
@@ -742,10 +742,10 @@ result:=false;
     end; //try
     end;
 
-        //we loaded the file, no need to save it again
+        //we did not load a privatekey so lets save it
         if keyfile='' then
         begin
-        bp := BIO_new_file(pchar(GetCurrentDir+'\'+keyfile), 'w+');
+        bp := BIO_new_file(pchar(GetCurrentDir+'\'+changefileext(csrfile,'.key')), 'w+');
         //the private key will have no password
         log('PEM_write_bio_RSAPrivateKey');
         log('no password...');
