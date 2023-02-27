@@ -125,10 +125,10 @@ begin
     filename:=cmd.readString('filename');
     if filename='' then filename:='cert.pfx';
     //in
-    privatekey:=cmd.readString('privatekey') ;
-    if privatekey='' then privatekey:='cert.key';
     cert:=cmd.readString('cert') ;
     if cert='' then cert:='cert.crt';
+    privatekey:=cmd.readString('privatekey') ;
+    if privatekey='' then privatekey:=changefileext(cert,'.key');
     //
     if Convert2PKCS12 (filename,cmd.readString('password'),privatekey,cert)=true then writeln('ok') else writeln('not ok');
     finally

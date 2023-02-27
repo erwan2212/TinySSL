@@ -66,6 +66,7 @@ var
   k: pEVP_PKEY;
   rc:integer=0;
 begin
+  log('LoadPublicKey: '+KeyFile);
   k:=nil;
   mem := BIO_new(BIO_s_file()); //BIO типа файл
   log('BIO_read_filename');
@@ -84,6 +85,7 @@ var
   mem: pBIO;
   k: pEVP_PKEY;
 begin
+  log('LoadPrivateKey: '+KeyFile);
   k := nil;
   mem := BIO_new(BIO_s_file());
   BIO_read_filename(mem, PAnsiChar(KeyFile));
@@ -135,7 +137,7 @@ var
   pkey: PEVP_PKEY;
   x: pEVP_PKEY;
 begin
-  log('FromOpenSSLPublicKey');
+  log('FromOpenSSLPublicKey: '+filepath);
   x:=nil;
   KeyBuffer := LoadPEMFile(filePath);
   if KeyBuffer = nil then
@@ -173,7 +175,7 @@ var
   I: Integer;
   x: pRSA;
 begin
-  log('FromOpenSSLPrivateKey');
+  log('FromOpenSSLPrivateKey: '+filepath);
   x:=nil;
   KeyBuffer := LoadPEMFile(filePath);
   if KeyBuffer = nil then
@@ -215,7 +217,7 @@ var
   Key: PEVP_PKEY;
   x: pX509;
 begin
-  log('FromOpenSSLCert');
+  log('FromOpenSSLCert: '+filepath);
   x:=nil;
   //KeyBuffer := LoadPEMFile(Buffer, Length(Buffer));
   KeyBuffer := LoadPEMFile(filepath);
@@ -243,22 +245,29 @@ end;
 function Convert2PKCS12(filename,export_pwd,privatekey,cert:string):boolean;
 var
   err_reason:integer;
-  bp:pBIO;
+  bp:pBIO=nil;
   p12_cert:pPKCS12 = nil;
-  pkey:pEVP_PKEY; x509_cert:pX509;
+  pkey:pEVP_PKEY = nil;
+  x509_cert:pX509 = nil;
   additional_certs:pSTACK_OFX509 = nil;
 begin
+  result:=false;
   log('Convert2PKCS12');
+  log('filename:'+filename);
+  log('cert:'+cert);
+  log('privatekey:'+privatekey);
   bp := BIO_new_file(pchar(privatekey), 'r+');
   log('PEM_read_bio_PrivateKey');
   //password will be prompted
   pkey:=PEM_read_bio_PrivateKey(bp,nil,nil,nil);
   BIO_free(bp);
+  if pkey=nil then exit;
 
   bp := BIO_new_file(pchar(cert), 'r+');
   log('PEM_read_bio_X509');
   x509_cert:=PEM_read_bio_X509(bp,nil,nil,nil);
   BIO_free(bp);
+  if x509_cert=nil then exit;
 
   log('PKCS12_new');
   p12_cert := PKCS12_new();
@@ -294,6 +303,7 @@ var
     err_reason:integer;
 begin
   log('Convert2PEM');
+  log('filename:'+filename);
   result:=false;
   bp := BIO_new_file(pchar(filename), 'r+');
   log('d2i_PKCS12_bio');
@@ -311,11 +321,11 @@ begin
 
 
   //
-  bp := BIO_new_file(pchar(GetCurrentDir+'\cert.crt'), 'w+');
+  bp := BIO_new_file(pchar(GetCurrentDir+'\'+changefileext(filename,'.crt')), 'w+');
   log('PEM_write_bio_X509');
   PEM_write_bio_X509(bp,x509_cert);
   BIO_free(bp);
-  bp := BIO_new_file(pchar(GetCurrentDir+'\cert.key'), 'w+');
+  bp := BIO_new_file(pchar(GetCurrentDir+'\'+changefileext(filename,'.key')), 'w+');
   log('PEM_write_bio_PrivateKey');
   //the private key will have no password
   PEM_write_bio_PrivateKey(bp,pkey,nil{EVP_des_ede3_cbc()},nil,0,nil,nil);
@@ -453,6 +463,9 @@ entryData:pASN1_STRING;
 cn:ppansichar;
 label free_all;
 begin
+  log('signreq');
+  log('filename:'+filename);
+  log('cert:'+cert);
   result:=false;
   // load ca
   bp := BIO_new_file(pchar(cert), 'r+');
@@ -599,6 +612,10 @@ var
     p:pBIGNUM=nil;
     ctx:pBN_CTX=nil ;
 begin
+  log('mkCAcert');
+  log('filename:'+filename);
+  log('cn:'+cn);
+  log('privatekey:'+privatekey);
 result:=false;
 
   if privatekey='' then
@@ -665,8 +682,8 @@ bc^.ca :=1;
 X509_add1_ext_i2d(x509, NID_basic_constraints,bc,1,0 ); //'critical,CA:TRUE'
 }
 
-add_ext(x509, NID_basic_constraints, 'critical,CA:TRUE');
-add_ext(x509, NID_key_usage, 'critical,keyCertSign,cRLSign');
+//add_ext(x509, NID_basic_constraints, 'critical,CA:TRUE');
+//add_ext(x509, NID_key_usage, 'critical,keyCertSign,cRLSign');
 //add_ext(x509, NID_subject_key_identifier, 'hash');
 //add_ext(x509, NID_authority_key_identifier, 'keyid:always,issuer:always');
 
@@ -718,6 +735,10 @@ req:pX509_REQ;
 key:pEVP_PKEY;
 name:pX509_NAME;
 begin
+  log('mkCAcert');
+  log('csrfile:'+csrfile);
+  log('privatekey:'+keyfile);
+  log('cn:'+cn);
 result:=false;
 
     if keyfile='' then
