@@ -8,3 +8,6 @@ tinySSL.exe --mkreq --debug=true --filename=request.csr --privatekey=request.key
 rem recreate, not renew
 rem tinySSL.exe --mkreq --debug=true --filename=request.csr
 tinySSL.exe --signreq --debug=true --alt="DNS:*.groupe.fr" --password=password --filename=request.csr --cert=ca.crt
+rem done
+rem convert to pfx
+rem tinySSL.exe --debug=true --pemtop12 --filename=ca.pfx --cert=ca.crt
