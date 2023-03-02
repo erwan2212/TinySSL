@@ -11,9 +11,9 @@ uses
 procedure LoadSSL;
 procedure FreeSSL;
 function generate_rsa_key:boolean;
-function mkCAcert(filename:string;cn:string;privatekey:string='';read_password:string='';serial:string=''):boolean;
+function mkCAcert(filename:string;cn:string;privatekey:string='';read_password:string='';serial:string='';ca:boolean=false):boolean;
 function mkreq(cn:string;keyfile,csrfile:string):boolean;
-function signreq(filename:string;cert:string;read_password:string='';alt:string=''):boolean;
+function signreq(filename:string;cert:string;read_password:string='';alt:string='';ca:boolean=false):boolean;
 function selfsign(filename:string;subject:string):boolean;
 function Convert2PEM(filename,export_pwd:string):boolean;
 function Convert2PKCS12(filename,export_pwd,privatekey,cert:string):boolean;
@@ -439,7 +439,7 @@ begin
 end;
 
 //the private key of the resulting cert is the request.key
-function signreq(filename:string;cert:string;read_password:string='';alt:string=''):boolean;
+function signreq(filename:string;cert:string;read_password:string='';alt:string='';ca:boolean=false):boolean;
 const
    LN_commonName=                   'commonName';
    //NID_commonName=                  13;
@@ -529,7 +529,7 @@ begin
   EVP_PKEY_free(pktmp);
   //
 
-  //add_ext(x509_cert, NID_basic_constraints, 'critical,CA:false');
+  if ca=true then add_ext(x509_cert, NID_basic_constraints, 'critical,CA:true');
   //add_ext(x509_cert, NID_key_usage, 'critical,digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment');
   //add_ext(x509_cert, NID_authority_key_identifier, 'keyid:always,issuer:always');
   //add_ext(x509_cert, NID_subject_key_identifier, 'hash');
@@ -594,7 +594,7 @@ These certificates are mainly used on the Windows platform.
 //openssl pkcs12 -in INFILE.p12 -out OUTFILE.crt -> encrypted private key
 //openssl pkcs12 -in INFILE.p12 -out OUTFILE.key -nodes -nocerts -> private key only
 //openssl pkcs12 -in INFILE.p12 -out OUTFILE.crt -nokeys -> cert only
-function mkCAcert(filename:string;cn:string;privatekey:string='';read_password:string='';serial:string=''):boolean;
+function mkCAcert(filename:string;cn:string;privatekey:string='';read_password:string='';serial:string='';ca:boolean=false):boolean;
 var
     pkey:PEVP_PKEY=nil;
     rsa:pRSA=nil;
@@ -682,7 +682,7 @@ bc^.ca :=1;
 X509_add1_ext_i2d(x509, NID_basic_constraints,bc,1,0 ); //'critical,CA:TRUE'
 }
 
-//add_ext(x509, NID_basic_constraints, 'critical,CA:TRUE');
+if ca=true then add_ext(x509, NID_basic_constraints, 'critical,CA:TRUE');
 //add_ext(x509, NID_key_usage, 'critical,keyCertSign,cRLSign');
 //add_ext(x509, NID_subject_key_identifier, 'hash');
 //add_ext(x509, NID_authority_key_identifier, 'keyid:always,issuer:always');

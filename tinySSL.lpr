@@ -18,6 +18,7 @@ uses
 var
   cmd: TCommandLineReader;
   filename,encrypted,password,privatekey,publickey,cert,cn,alt:string;
+  ca:boolean=false;
   hfile_:thandle=thandle(-1);
   mem_:array[0..8192-1] of char;
   size_:dword=0;
@@ -35,6 +36,7 @@ begin
   //cmd.declareString('username', 'mandatory');
   cmd.declareString('cn', 'cn');
   cmd.declareString('alt', 'alternate name');
+  cmd.declareString('ca', 'true|false','false');
   cmd.declareString('password', 'password');
   cmd.declareString('privatekey', 'path to a privatekey file');
   cmd.declareString('publickey', 'path to a publickey file, not needed if you have the privatekey');
@@ -149,8 +151,9 @@ begin
     password:=cmd.readString('password') ;
     cn:=cmd.readString('cn') ;
     if cn='' then cn:='_Root Authority_';
+    ca:=cmd.readString('ca')='true';
     //
-    if mkCAcert(filename,cn,privatekey,password,'')=true then writeln('ok') else writeln('not ok');
+    if mkCAcert(filename,cn,privatekey,password,'',ca)=true then writeln('ok') else writeln('not ok');
     finally
     FreeSSL;
     end;
@@ -185,7 +188,8 @@ begin
     if filename='' then filename:='request.csr';
     password:=cmd.readString('password') ;
     alt:=cmd.readString('alt') ;
-    if signreq(filename,cert,password,alt)=true then writeln('ok') else writeln('not ok');
+    ca:=cmd.readString('ca')='true';
+    if signreq(filename,cert,password,alt,ca)=true then writeln('ok') else writeln('not ok');
     finally
     FreeSSL;
     end;
