@@ -57,7 +57,7 @@ begin
   cmd.declareflag('mkcert', 'make a self sign root cert, read from privatekey (option) & write to ca.crt and ca.key');
   cmd.declareflag('mkreq', 'make a certificate service request, read from request.key (if exist) & write to request.csr request.key');
   cmd.declareflag('signreq', 'make a certificate from a csr, read from a csr filename ca.crt ca.key');
-  cmd.declareflag('selfsign', 'make a self sign cert, write to cert.crt cert.key');
+  //cmd.declareflag('selfsign', 'make a self sign cert, write to cert.crt cert.key');
 
   cmd.declareflag('p12topem', 'convert a pfx to pem, write to cert.crt and cert.key');
   cmd.declareflag('pemtop12', 'convert a pem to pfx, read from cert.crt and cert.key');
@@ -153,7 +153,7 @@ begin
     if cn='' then cn:='_Root Authority_';
     ca:=cmd.readString('ca')='true';
     //
-    if mkCAcert(filename,cn,privatekey,password,'',ca)=true then writeln('ok') else writeln('not ok');
+    if mkcert(filename,cn,privatekey,password,'',ca)=true then writeln('ok') else writeln('not ok');
     finally
     FreeSSL;
     end;
@@ -196,6 +196,7 @@ begin
     exit;
     end;
 
+  {
     if cmd.existsProperty('selfsign')=true then
     begin
     try
@@ -210,6 +211,7 @@ begin
     end;
     exit;
     end;
+    }
 
     if cmd.existsProperty('print_cert')=true then
     begin

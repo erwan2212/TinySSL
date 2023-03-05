@@ -11,10 +11,10 @@ uses
 procedure LoadSSL;
 procedure FreeSSL;
 function generate_rsa_key:boolean;
-function mkCAcert(filename:string;cn:string;privatekey:string='';read_password:string='';serial:string='';ca:boolean=false):boolean;
+function mkcert(filename:string;cn:string;privatekey:string='';read_password:string='';serial:string='';ca:boolean=false):boolean;
 function mkreq(cn:string;keyfile,csrfile:string):boolean;
 function signreq(filename:string;cert:string;read_password:string='';alt:string='';ca:boolean=false):boolean;
-function selfsign(filename:string;subject:string):boolean;
+//function selfsign(filename:string;subject:string):boolean;
 function Convert2PEM(filename,export_pwd:string):boolean;
 function Convert2PKCS12(filename,export_pwd,privatekey,cert:string):boolean;
 function print_cert(filename:string):boolean;
@@ -339,6 +339,7 @@ begin
   result:=true;
 end;
 
+{
 function selfsign(filename:string;subject:string):boolean;
 var
     x:pX509 = nil;
@@ -398,6 +399,7 @@ begin
    if (pkey<>nil) then EVP_PKEY_free(pkey);
 
 end;
+}
 
 function add_ext(cert: PX509; nid: TC_INT; value: PAnsiChar): Boolean;
 var ex: PX509_EXTENSION=nil;
@@ -594,7 +596,7 @@ These certificates are mainly used on the Windows platform.
 //openssl pkcs12 -in INFILE.p12 -out OUTFILE.crt -> encrypted private key
 //openssl pkcs12 -in INFILE.p12 -out OUTFILE.key -nodes -nocerts -> private key only
 //openssl pkcs12 -in INFILE.p12 -out OUTFILE.crt -nokeys -> cert only
-function mkCAcert(filename:string;cn:string;privatekey:string='';read_password:string='';serial:string='';ca:boolean=false):boolean;
+function mkcert(filename:string;cn:string;privatekey:string='';read_password:string='';serial:string='';ca:boolean=false):boolean;
 var
     pkey:PEVP_PKEY=nil;
     rsa:pRSA=nil;
@@ -1052,10 +1054,10 @@ begin
   rsa:=FromOpenSSLPrivateKey (filename,password); //password will be prompted
 
   //try if rsa<>nil then Writeln('BN_bn2hex N: ', strpas(BN_bn2hex(rsa^.n )));except end;
-  //try if rsa<>nil then Writeln('BN_bn2hex D: ', strpas(BN_bn2hex(rsa^.d  )));except end; //exponent
+  try if rsa<>nil then Writeln('BN_bn2hex D: ', strpas(BN_bn2hex(rsa^.d  )));except end; //exponent
   try if rsa<>nil then Writeln('BN_bn2hex E: ', BN_bn2hex(rsa^.e ));except end;
-  //try if rsa<>nil then Writeln('BN_bn2hex P: ', strpas(BN_bn2hex(rsa^.p   )));except end;
-  //try if rsa<>nil then Writeln('BN_bn2hex Q: ', strpas(BN_bn2hex(rsa^.q   )));except end;
+  try if rsa<>nil then Writeln('BN_bn2hex P: ', strpas(BN_bn2hex(rsa^.p   )));except end;
+  try if rsa<>nil then Writeln('BN_bn2hex Q: ', strpas(BN_bn2hex(rsa^.q   )));except end;
    result:=true;
 end;
 
@@ -1068,16 +1070,26 @@ var
     p:pBIGNUM;
     bp:pBIO;
     n:integer=0;
+    x509:pX509 ;
+    key:pEVP_PKEY ;
 begin
 
   result:=false;
   rsa:=FromOpenSSLCert(filename);
-  //try if rsa<>nil then Writeln('BN_bn2hex: ', strpas(BN_bn2hex(rsa^.n )));except end;
-  //try if rsa<>nil then Writeln('BN_bn2hex: ', strpas(BN_bn2hex(rsa^.d  )));except end; //exponent
+  //try if rsa<>nil then Writeln('BN_bn2hex N: ', strpas(BN_bn2hex(rsa^.n )));except end;
+  try if rsa<>nil then Writeln('BN_bn2hex D: ', strpas(BN_bn2hex(rsa^.d  )));except end; //exponent
   //n := BN_num_bytes(rsa^.e); writeln(inttostr(n)+' bytes');
   try if rsa<>nil then Writeln('BN_bn2hex E: ', BN_bn2hex(rsa^.e ));except end;
-  //try if rsa<>nil then Writeln('BN_bn2hex: ', strpas(BN_bn2hex(rsa^.p   )));except end;
-  //try if rsa<>nil then Writeln('BN_bn2hex: ', strpas(BN_bn2hex(rsa^.q   )));except end;
+  //try if rsa<>nil then Writeln('BN_bn2hex P: ', strpas(BN_bn2hex(rsa^.p   )));except end;
+  //try if rsa<>nil then Writeln('BN_bn2hex Q: ', strpas(BN_bn2hex(rsa^.q   )));except end;
+
+  {
+  bp := BIO_new_file(pchar(filename), 'r+');
+  log('PEM_read_bio_X509');
+  x509:=PEM_read_bio_X509(bp,nil,nil,nil);
+  key:=X509_get_pubkey(x509);
+  BIO_free(bp);
+  }
 
   //or
   {
