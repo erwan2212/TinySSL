@@ -15,6 +15,32 @@ uses
   opensslutils,
   utils;
 
+//https://learn.microsoft.com/en-us/windows/win32/api/wincrypt/ns-wincrypt-publickeystruc
+type
+  BLOBHEADER=record
+    bType:BYTE;
+    bVersion:BYTE;
+    Reserved:WORD;
+    aiKeyAlg:DWORD;
+end;
+
+//https://learn.microsoft.com/en-us/windows/win32/api/wincrypt/ns-wincrypt-rsapubkey
+RSAPUBKEY=record
+    magic:DWORD;
+    bitlen:DWORD;
+    pubexp:DWORD;
+end;
+PRSAPUBKEY=^RSAPUBKEY;
+{
+BYTE            modulus[rsapubkey.bitlen/8];
+BYTE            prime1[rsapubkey.bitlen/16];
+BYTE            prime2[rsapubkey.bitlen/16];
+BYTE            exponent1[rsapubkey.bitlen/16];
+BYTE            exponent2[rsapubkey.bitlen/16];
+BYTE            coefficient[rsapubkey.bitlen/16];
+BYTE            privateExponent[rsapubkey.bitlen/8];
+}
+
 var
   cmd: TCommandLineReader;
   filename,encrypted,password,privatekey,publickey,cert,cn,alt:string;
@@ -23,7 +49,50 @@ var
   mem_:array[0..8192-1] of char;
   size_:dword=0;
 
+//load a decrypted rsa key, no header
+procedure loadrsa(filename:string);
+var
+    buffer:array[0..8192-1] of byte;
+    temp:array of byte;
+    pos,size,c:word;
 begin
+    hfile_ := CreateFile(pchar(filename), GENERIC_READ , FILE_SHARE_READ or FILE_SHARE_WRITE, nil, OPEN_EXISTING , FILE_ATTRIBUTE_NORMAL, 0);
+    if hfile_=thandle(-1) then begin log('invalid handle',1);exit;end;
+    ReadFile (hfile_,buffer[0],sizeof(buffer),size_,nil);
+    if size_>0 then
+       begin
+       writeln(inttohex(PRSAPUBKEY(@buffer[0])^.magic ,8));
+       writeln(PRSAPUBKEY(@buffer[0])^.bitlen  );
+       writeln(PRSAPUBKEY(@buffer[0])^.pubexp   );
+       //modulus
+       pos:=sizeof(RSAPUBKEY);
+       size:=PRSAPUBKEY(@buffer[0])^.bitlen div 8;
+       SetLength(temp,size);
+       copymemory(@temp[0],@buffer[pos],size);
+       for c:=0 to size -1 do write(inttohex(temp[c],2));
+       writeln;
+       //prime1
+       pos:=pos+size;
+       size:=PRSAPUBKEY(@buffer[0])^.bitlen div 16;
+       SetLength(temp,size);
+       copymemory(@temp[0],@buffer[pos],size);
+       for c:=0 to size -1 do write(inttohex(temp[c],2));
+       writeln;
+       //prime2
+       pos:=pos+size;
+       size:=PRSAPUBKEY(@buffer[0])^.bitlen div 16;
+       SetLength(temp,size);
+       copymemory(@temp[0],@buffer[pos],size);
+       for c:=0 to size -1 do write(inttohex(temp[c],2));
+       writeln;
+       //
+       end;
+    closehandle(hfile_);
+end;
+
+begin
+  //loadrsa('decoded.bin');
+  //exit;
   debug:=true;
 
   if paramcount=0 then
