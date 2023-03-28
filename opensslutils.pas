@@ -261,13 +261,21 @@ begin
   //password will be prompted
   pkey:=PEM_read_bio_PrivateKey(bp,nil,nil,nil);
   BIO_free(bp);
-  if pkey=nil then exit;
+  if pkey=nil then
+     begin
+     writeln('PEM_read_bio_PrivateKey failed');
+     exit;
+     end;
 
   bp := BIO_new_file(pchar(cert), 'r+');
   log('PEM_read_bio_X509');
   x509_cert:=PEM_read_bio_X509(bp,nil,nil,nil);
   BIO_free(bp);
-  if x509_cert=nil then exit;
+  if x509_cert=nil then
+     begin
+     writeln('PEM_read_bio_X509 failed');
+     exit;
+     end;
 
   log('PKCS12_new');
   p12_cert := PKCS12_new();
@@ -276,7 +284,12 @@ begin
 
   log('PKCS12_create');
   p12_cert := PKCS12_create(pchar(export_pwd), nil, pkey, x509_cert, nil, 0, 0, 0, 0, 0);
-  if p12_cert = nil then exit;
+  if p12_cert = nil then
+     begin
+     writeln('PKCS12_create failed, '+inttohex(ERR_peek_error,8));
+     //(SSL: error:0B080074:x509 certificate routines: X509_check_private_key:key values mismatch)
+     exit;
+     end;
 
   log('i2d_PKCS12_bio');
   bp := BIO_new_file(pchar(filename), 'w+');
@@ -1054,10 +1067,10 @@ begin
   rsa:=FromOpenSSLPrivateKey (filename,password); //password will be prompted
 
   //try if rsa<>nil then Writeln('BN_bn2hex N: ', strpas(BN_bn2hex(rsa^.n )));except end;
-  try if rsa<>nil then Writeln('BN_bn2hex D: ', strpas(BN_bn2hex(rsa^.d  )));except end; //exponent
+  //try if rsa<>nil then Writeln('BN_bn2hex D: ', strpas(BN_bn2hex(rsa^.d  )));except end; //exponent
   try if rsa<>nil then Writeln('BN_bn2hex E: ', BN_bn2hex(rsa^.e ));except end;
-  try if rsa<>nil then Writeln('BN_bn2hex P: ', strpas(BN_bn2hex(rsa^.p   )));except end;
-  try if rsa<>nil then Writeln('BN_bn2hex Q: ', strpas(BN_bn2hex(rsa^.q   )));except end;
+  //try if rsa<>nil then Writeln('BN_bn2hex P: ', strpas(BN_bn2hex(rsa^.p   )));except end;
+  //try if rsa<>nil then Writeln('BN_bn2hex Q: ', strpas(BN_bn2hex(rsa^.q   )));except end;
    result:=true;
 end;
 
@@ -1077,7 +1090,7 @@ begin
   result:=false;
   rsa:=FromOpenSSLCert(filename);
   //try if rsa<>nil then Writeln('BN_bn2hex N: ', strpas(BN_bn2hex(rsa^.n )));except end;
-  try if rsa<>nil then Writeln('BN_bn2hex D: ', strpas(BN_bn2hex(rsa^.d  )));except end; //exponent
+  //try if rsa<>nil then Writeln('BN_bn2hex D: ', strpas(BN_bn2hex(rsa^.d  )));except end; //exponent
   //n := BN_num_bytes(rsa^.e); writeln(inttostr(n)+' bytes');
   try if rsa<>nil then Writeln('BN_bn2hex E: ', BN_bn2hex(rsa^.e ));except end;
   //try if rsa<>nil then Writeln('BN_bn2hex P: ', strpas(BN_bn2hex(rsa^.p   )));except end;
