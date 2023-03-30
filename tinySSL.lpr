@@ -182,7 +182,7 @@ begin
     filename:=cmd.readString('filename');
     if filename='' then filename:='cert.pfx';
     //
-    if Convert2PEM (filename,cmd.readString('password'))=true then writeln('ok') else writeln('not ok');
+    if PFX2PEM (filename,cmd.readString('password'))=true then writeln('ok') else writeln('not ok');
     finally
     FreeSSL;
     end;
@@ -220,7 +220,7 @@ begin
     privatekey:=cmd.readString('privatekey') ;
     if privatekey='' then privatekey:=changefileext(cert,'.key');
     //
-    if Convert2PKCS12 (filename,cmd.readString('password'),privatekey,cert)=true then writeln('ok') else writeln('not ok');
+    if PEM2PFX (filename,cmd.readString('password'),privatekey,cert)=true then writeln('ok') else writeln('not ok');
     finally
     FreeSSL;
     end;

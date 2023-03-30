@@ -15,8 +15,8 @@ function mkcert(filename:string;cn:string;privatekey:string='';read_password:str
 function mkreq(cn:string;keyfile,csrfile:string):boolean;
 function signreq(filename:string;cert:string;read_password:string='';alt:string='';ca:boolean=false):boolean;
 //function selfsign(filename:string;subject:string):boolean;
-function Convert2PEM(filename,export_pwd:string):boolean;
-function Convert2PKCS12(filename,export_pwd,privatekey,cert:string):boolean;
+function PFX2PEM(filename,export_pwd:string):boolean;
+function PEM2PFX(filename,export_pwd,privatekey,cert:string):boolean;
 function PVTDER2PEM(filename:string):boolean;
 function X509DER2PEM(filename:string):boolean;
 function print_cert(filename:string):boolean;
@@ -244,7 +244,7 @@ begin
   end;
 end;
 
-function Convert2PKCS12(filename,export_pwd,privatekey,cert:string):boolean;
+function PEM2PFX(filename,export_pwd,privatekey,cert:string):boolean;
 var
   err_reason:integer;
   bp:pBIO=nil;
@@ -306,13 +306,13 @@ begin
   result:=err_reason<>0;
 end;
 
-function Convert2PEM(filename,export_pwd:string):boolean;
+function PFX2PEM(filename,export_pwd:string):boolean;
 const
   PKCS12_R_MAC_VERIFY_FAILURE =113;
 var
     p12_cert:pPKCS12 = nil;
-    pkey:pEVP_PKEY;
-    x509_cert:pX509;
+    pkey:pEVP_PKEY=nil;
+    x509_cert:pX509=nil;
     additional_certs:pSTACK_OFX509 = nil;
     bp:pBIO;
     err_reason:integer;
@@ -324,6 +324,7 @@ begin
   log('d2i_PKCS12_bio');
   //decode
   p12_cert:=d2i_PKCS12_bio(bp, nil);
+  if p12_cert = nil then exit;
   log('PKCS12_parse');
   //this is the export password, not the private key password
   err_reason:=PKCS12_parse(p12_cert, pchar(export_pwd), pkey, x509_cert, additional_certs);
@@ -332,14 +333,12 @@ begin
   BIO_free(bp);
   if err_reason =0 then exit;
 
-  if p12_cert = nil then exit;
-
-
   //
   bp := BIO_new_file(pchar(GetCurrentDir+'\'+changefileext(filename,'.crt')), 'w+');
   log('PEM_write_bio_X509');
   PEM_write_bio_X509(bp,x509_cert);
   BIO_free(bp);
+  if pkey=nil then exit;
   bp := BIO_new_file(pchar(GetCurrentDir+'\'+changefileext(filename,'.key')), 'w+');
   log('PEM_write_bio_PrivateKey');
   //the private key will have no password
