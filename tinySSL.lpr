@@ -120,17 +120,17 @@ begin
 
   cmd.declareflag('genkey', 'generate rsa keys public.pem and private.pem');
 
-  cmd.declareflag('encrypt', 'encrypt a file using public.pem');
-  cmd.declareflag('decrypt', 'decrypt a file using private.pem');
+  cmd.declareflag('encrypt', 'encrypt a file using public.pem, read from filename');
+  cmd.declareflag('decrypt', 'decrypt a file using private.pem, read from filename');
 
-  cmd.declareflag('mkcert', 'make a self sign root cert, read from privatekey (option) & write to ca.crt and ca.key');
-  cmd.declareflag('mkreq', 'make a certificate service request, read from request.key (if exist) & write to request.csr request.key');
-  cmd.declareflag('signreq', 'make a certificate from a csr, read from a csr filename ca.crt ca.key');
+  cmd.declareflag('mkcert', 'make a self sign root cert, read from privatekey (option) & write to filename.crt and filename.key');
+  cmd.declareflag('mkreq', 'make a certificate service request, read from privatekey & write to filename.csr filename.key (if privatekey not specified)');
+  cmd.declareflag('signreq', 'make a certificate from a csr, read from filename and cert, write to filename.crt');
   //cmd.declareflag('selfsign', 'make a self sign cert, write to cert.crt cert.key');
 
-  cmd.declareflag('dertopem', 'convert a binary/der private key or cert to base 64 pem format, read from cert or privatekey');
-  cmd.declareflag('p12topem', 'convert a pfx to pem, write to cert.crt and cert.key');
-  cmd.declareflag('pemtop12', 'convert a pem to pfx, read from cert.crt and cert.key');
+  cmd.declareflag('dertopem', 'convert a binary/der private key or cert to base 64 pem format, read from cert or privatekey, write to cert.crt or privatekey.key ');
+  cmd.declareflag('p12topem', 'convert a pfx to pem, read from filename, write to filename.crt and filename.key');
+  cmd.declareflag('pemtop12', 'convert a pem to pfx, read from cert and privatekey, write to filename');
   //
   cmd.parse(cmdline);
 
