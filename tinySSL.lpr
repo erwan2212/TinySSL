@@ -128,7 +128,7 @@ begin
   cmd.declareflag('signreq', 'make a certificate from a csr, read from a csr filename ca.crt ca.key');
   //cmd.declareflag('selfsign', 'make a self sign cert, write to cert.crt cert.key');
 
-  cmd.declareflag('dertopem', 'convert a private key from der to pem format, read from filename');
+  cmd.declareflag('dertopem', 'convert a binary/der private key or cert to base 64 pem format, read from cert or privatekey');
   cmd.declareflag('p12topem', 'convert a pfx to pem, write to cert.crt and cert.key');
   cmd.declareflag('pemtop12', 'convert a pem to pfx, read from cert.crt and cert.key');
   //
@@ -194,10 +194,13 @@ begin
     try
     LoadSSL;
     //in
-    filename:=cmd.readString('filename');
-    if filename='' then filename:='private.der';
+    cert:=cmd.readString('cert');
+    privatekey:=cmd.readString('privatekey') ;
     //
-    if PVTDER2PEM (filename)=true then writeln('ok') else writeln('not ok');
+    if privatekey <>'' then
+       if PVTDER2PEM (privatekey)=true then writeln('ok') else writeln('not ok');
+    if cert <>'' then
+       if X509DER2PEM (cert)=true then writeln('ok') else writeln('not ok');
     finally
     FreeSSL;
     end;
