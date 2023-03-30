@@ -17,6 +17,7 @@ function signreq(filename:string;cert:string;read_password:string='';alt:string=
 //function selfsign(filename:string;subject:string):boolean;
 function Convert2PEM(filename,export_pwd:string):boolean;
 function Convert2PKCS12(filename,export_pwd,privatekey,cert:string):boolean;
+function PVTDER2PEM(filename:string):boolean;
 function print_cert(filename:string):boolean;
 function print_private(filename:string;password:string=''):boolean;
 
@@ -349,6 +350,37 @@ begin
   if pkey<>nil then EVP_PKEY_free(pkey); pkey := nil;
   ERR_clear_error();
   PKCS12_free(p12_cert);
+  result:=true;
+end;
+
+function PVTDER2PEM(filename:string):boolean;
+var
+hfile_:thandle=thandle(-1);
+mem_:array[0..8192-1] of char;
+size_:dword=0;
+//
+pemPrivKeyBio,bp:pBIO;
+privKey:pEVP_PKEY=nil;
+begin
+  result:=false;
+  //
+  hfile_ := CreateFile(pchar(filename), GENERIC_READ , FILE_SHARE_READ or FILE_SHARE_WRITE, nil, OPEN_EXISTING , FILE_ATTRIBUTE_NORMAL, 0);
+  if hfile_=thandle(-1) then begin log('invalid handle',1);exit;end;
+  ReadFile (hfile_,mem_[0],sizeof(mem_),size_,nil);
+  closehandle(hfile_);
+  //
+  pemPrivKeyBio := BIO_new(BIO_s_mem());
+  BIO_write(pemPrivKeyBio, @mem_[0], size_);
+  BIO_flush(pemPrivKeyBio);
+  privKey := d2i_PrivateKey_bio(pemPrivKeyBio, privKey);
+  if privkey=nil then exit;
+  //
+  bp := BIO_new_file(pchar(GetCurrentDir+'\'+changefileext(filename,'.key')), 'w+');
+  log('PEM_write_bio_PrivateKey');
+  //the private key will have no password
+  PEM_write_bio_PrivateKey(bp,privKey,nil{EVP_des_ede3_cbc()},nil,0,nil,nil);
+  BIO_free(bp);
+  //
   result:=true;
 end;
 
