@@ -24,7 +24,7 @@ TinySSL, aka playing with openssl library (libeay32).<br/>
 --dertopem              convert a binary/der private key or cert to base 64 pem format, read from cert or<br/>
                         privatekey, write to cert.crt or privatekey.key<br/>
 --pemtoder              convert a base 64 pem format to binary/der private key or cert, read from cert or<br/>
-                        privatekey, write to cert.crt or privatekey.key<br/>
+                        privatekey, write to cert.der or privatekey.der<br/>
 --p12topem              convert a pfx to pem, read from filename, write to filename.crt and filename.key<br/>
 --pemtop12              convert a pem to pfx, read from cert and privatekey, write to filename<br/>
 <br/><br/>
