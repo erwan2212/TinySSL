@@ -15,12 +15,19 @@ function mkcert(filename:string;cn:string;privatekey:string='';read_password:str
 function mkreq(cn:string;keyfile,csrfile:string):boolean;
 function signreq(filename:string;cert:string;read_password:string='';alt:string='';ca:boolean=false):boolean;
 //function selfsign(filename:string;subject:string):boolean;
+
+function P7B2PEM(filename:string):boolean;
+function PEM2P7B(filename:string):boolean;
+
 function PFX2PEM(filename,export_pwd:string):boolean;
 function PEM2PFX(filename,export_pwd,privatekey,cert:string):boolean;
+
 function PVTDER2PEM(filename:string):boolean;
 function PVTPEM2DER(filename:string):boolean;
+
 function X509DER2PEM(filename:string):boolean;
 function X509PEM2DER(filename:string):boolean;
+
 function print_cert(filename:string):boolean;
 function print_private(filename:string;password:string=''):boolean;
 
@@ -308,6 +315,78 @@ begin
   result:=err_reason<>0;
 end;
 
+function PEM2P7B(filename:string):boolean;
+var
+p7: pPKCS7=nil;
+certs:pSTACK_OFX509 = nil;
+bp:pBIO;
+x509_cert:pX509=nil;
+begin
+
+  result:=false;
+
+log('PEM2P7B');
+log('filename:'+filename);
+
+  bp := BIO_new_file(pchar(filename), 'r+');
+  log('PEM_read_bio_X509');
+  x509_cert:=PEM_read_bio_X509(bp,nil,nil,nil);
+  BIO_free(bp);
+  if x509_cert=nil then
+     begin
+     writeln('PEM_read_bio_X509 failed');
+     exit;
+     end;
+
+  //
+  certs := sk_new_null();
+  sk_push(certs, x509_cert);
+  //
+
+  //log('i2d_PKCS7_bio');
+  //result:=i2d_PKCS7_bio (bp,p7)<>-1; //der
+  //if result=false then writeln('i2d_X509_bio failed');
+  p7 := PKCS7_sign(nil, nil, certs, nil, PKCS7_BINARY);
+  if p7=nil then writeln('PKCS7_sign failed');
+  //finalize the structure
+  log('PEM_write_bio_PKCS7');
+  bp := BIO_new_file(pchar(GetCurrentDir+'\'+changefileext(filename,'.p7b')), 'w+');
+  PEM_write_bio_PKCS7(bp,p7);
+  BIO_free(bp);
+  sk_free(certs);
+  result:=true;
+end;
+
+function P7B2PEM(filename:string):boolean;
+var
+bp:pBIO;
+p7: pPKCS7;
+begin
+  result:=false;
+  log('P7B2PEM');
+  log('filename:'+filename);
+  result:=false;
+  bp := BIO_new_file(pchar(filename), 'r+');
+  log('d2i_PKCS7_bio');
+  //decode
+  p7:=d2i_PKCS7_bio(bp, nil);
+  BIO_free(bp);
+  if p7 = nil then exit;
+
+  //OBJ_obj2nid(p7^.type) should give us the type of p7b : NID_pkcs7_signed or NID_pkcs7_signedAndEnveloped
+  //sk_num should give us number of certs // if more than one we should sk_X509_shift or sk_X509_value(certs, i)
+
+  if (p7^.sign^.cert <> nil) then
+  begin
+       bp := BIO_new_file(pchar(GetCurrentDir+'\'+changefileext(filename,'.crt')), 'w+');
+       log('PEM_write_bio_X509');
+       //PEM_write_bio_X509(bp,sk_X509_value(p7^.sign^.cert, 0));
+       PEM_write_bio_X509(bp,sk_value(p7^.sign^.cert, 0));
+       BIO_free(bp);
+       result:=true;
+  end;
+end;
+
 function PFX2PEM(filename,export_pwd:string):boolean;
 const
   PKCS12_R_MAC_VERIFY_FAILURE =113;
@@ -319,6 +398,7 @@ var
     bp:pBIO;
     err_reason:integer;
 begin
+  result:=false;
   log('Convert2PEM');
   log('filename:'+filename);
   result:=false;

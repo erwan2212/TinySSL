@@ -130,8 +130,10 @@ begin
 
   cmd.declareflag('dertopem', 'convert a binary/der private key or cert to base 64 pem format, read from cert or privatekey, write to cert.crt or privatekey.key ');
   cmd.declareflag('pemtoder', 'convert a base 64 pem format to binary/der private key or cert, read from cert or privatekey, write to cert.der or privatekey.der ');
-  cmd.declareflag('p12topem', 'convert a pfx to pem, read from filename, write to filename.crt and filename.key');
+  cmd.declareflag('p12topem', 'convert a pfx to pem, read from cert, write to filename.crt and filename.key');
   cmd.declareflag('pemtop12', 'convert a pem to pfx, read from cert and privatekey, write to filename');
+  cmd.declareflag('p7topem', 'convert a p7b to pem, read from cert, write to cert.crt');
+  cmd.declareflag('pemtop7', 'convert a pem to p7b, read from cert, write to cert.p7b');
   //
   cmd.parse(cmdline);
 
@@ -175,15 +177,30 @@ begin
     exit;
     end;
 
-  if cmd.existsProperty('p12topem')=true then
+  if cmd.existsProperty('pemtop7')=true then
     begin
     try
     LoadSSL;
     //in
-    filename:=cmd.readString('filename');
-    if filename='' then filename:='cert.pfx';
+    cert:=cmd.readString('cert');
+    if cert='' then filename:='cert.crt';
     //
-    if PFX2PEM (filename,cmd.readString('password'))=true then writeln('ok') else writeln('not ok');
+    if PEM2P7B  (cert)=true then writeln('ok') else writeln('not ok');
+    finally
+    FreeSSL;
+    end;
+    exit;
+    end;
+
+  if cmd.existsProperty('p7topem')=true then
+    begin
+    try
+    LoadSSL;
+    //in
+    cert:=cmd.readString('cert');
+    if cert='' then cert:='cert.p7b';
+    //
+    if P7b2PEM (cert)=true then writeln('ok') else writeln('not ok');
     finally
     FreeSSL;
     end;
@@ -220,6 +237,21 @@ begin
        if PVTDER2PEM (privatekey)=true then writeln('ok') else writeln('not ok');
     if cert <>'' then
        if X509DER2PEM (cert)=true then writeln('ok') else writeln('not ok');
+    finally
+    FreeSSL;
+    end;
+    exit;
+    end;
+
+  if cmd.existsProperty('p12topem')=true then
+    begin
+    try
+    LoadSSL;
+    //in
+    cert:=cmd.readString('cert');
+    if cert='' then cert:='cert.pfx';
+    //
+    if PFX2PEM (cert,cmd.readString('password'))=true then writeln('ok') else writeln('not ok');
     finally
     FreeSSL;
     end;
