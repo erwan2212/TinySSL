@@ -18,7 +18,9 @@ function signreq(filename:string;cert:string;read_password:string='';alt:string=
 function PFX2PEM(filename,export_pwd:string):boolean;
 function PEM2PFX(filename,export_pwd,privatekey,cert:string):boolean;
 function PVTDER2PEM(filename:string):boolean;
+function PVTPEM2DER(filename:string):boolean;
 function X509DER2PEM(filename:string):boolean;
+function X509PEM2DER(filename:string):boolean;
 function print_cert(filename:string):boolean;
 function print_private(filename:string;password:string=''):boolean;
 
@@ -352,6 +354,58 @@ begin
   PKCS12_free(p12_cert);
   result:=true;
 end;
+
+function X509PEM2DER(filename:string):boolean;
+var
+x509_cert:pX509=nil;
+bp:pBIO;
+begin
+result:=false;
+
+log('X509PEM2DER');
+log('filename:'+filename);
+
+  bp := BIO_new_file(pchar(filename), 'r+');
+  log('PEM_read_bio_X509');
+  x509_cert:=PEM_read_bio_X509(bp,nil,nil,nil);
+  BIO_free(bp);
+  if x509_cert=nil then
+     begin
+     writeln('PEM_read_bio_X509 failed');
+     exit;
+     end;
+
+  bp := BIO_new_file(pchar(GetCurrentDir+'\'+changefileext(filename,'.der')), 'w+');
+  result:= i2d_X509_bio (bp,x509_cert )<>-1;
+  if result=false then writeln('i2d_X509_bio failed');
+  BIO_free(bp);
+
+end;
+
+function PVTPEM2DER(filename:string):boolean;
+var
+p:pEVP_PKEY =nil;
+bp:pBIO;
+begin
+result:=false;
+
+log('PVTPEM2DER');
+log('filename:'+filename);
+
+p:=LoadPrivateKey(filename);
+  if p=nil then
+     begin
+     writeln('LoadPrivateKey failed');
+     exit;
+     end;
+
+  bp := BIO_new_file(pchar(GetCurrentDir+'\'+changefileext(filename,'.der')), 'w+');
+  result:= i2d_PrivateKey_bio  (bp,p )<>-1;
+  if result=false then writeln('i2d_X509_bio failed');
+  BIO_free(bp);
+
+end;
+
 
 function X509DER2PEM(filename:string):boolean;
 var

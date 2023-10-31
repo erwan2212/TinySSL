@@ -129,6 +129,7 @@ begin
   //cmd.declareflag('selfsign', 'make a self sign cert, write to cert.crt cert.key');
 
   cmd.declareflag('dertopem', 'convert a binary/der private key or cert to base 64 pem format, read from cert or privatekey, write to cert.crt or privatekey.key ');
+  cmd.declareflag('pemtoder', 'convert a base 64 pem format to binary/der private key or cert, read from cert or privatekey, write to cert.der or privatekey.der ');
   cmd.declareflag('p12topem', 'convert a pfx to pem, read from filename, write to filename.crt and filename.key');
   cmd.declareflag('pemtop12', 'convert a pem to pfx, read from cert and privatekey, write to filename');
   //
@@ -188,6 +189,24 @@ begin
     end;
     exit;
     end;
+
+  if cmd.existsProperty('pemtoder')=true then
+      begin
+      try
+      LoadSSL;
+      //in
+      cert:=cmd.readString('cert');
+      privatekey:=cmd.readString('privatekey') ;
+      //
+      if privatekey <>'' then
+         if PVTPEM2DER (privatekey)=true then writeln('ok') else writeln('not ok');
+      if cert <>'' then
+         if X509PEM2DER (cert)=true then writeln('ok') else writeln('not ok');
+      finally
+      FreeSSL;
+      end;
+      exit;
+      end;
 
   if cmd.existsProperty('dertopem')=true then
     begin
