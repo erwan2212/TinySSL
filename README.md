@@ -27,6 +27,8 @@ TinySSL, aka playing with openssl library (libeay32).<br/>
                         privatekey, write to cert.der or privatekey.der<br/>
 --p12topem              convert a pfx to pem, read from filename, write to filename.crt and filename.key<br/>
 --pemtop12              convert a pem to pfx, read from cert and privatekey, write to filename<br/>
+--p7topem               convert a p7b to pem, read from cert, write to cert.crt<br/>
+--pemtop7               convert a pem to p7b, read from cert, write to cert.p7b<br/>
 <br/><br/>
 Example : create a root ca (reusing a previous key), create a csr (reusing a previous key) and generate a certificate (that will work in latest chrome).<br/>
 <br/><br/>
