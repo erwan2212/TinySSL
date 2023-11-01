@@ -1,6 +1,7 @@
 program tinySSL;
 
 //openssl here https://indy.fulgan.com/SSL/
+//format here : https://cppsecrets.com/users/38911097109971109810497110115971081051149710611010510864103109971051084699111109/OpenSSL-Converting-Certificate-Formats.php
 
 {$mode objfpc}{$H+}
 {$APPTYPE CONSOLE}
@@ -115,8 +116,8 @@ begin
   cmd.declareString('filename', 'local filename');
 
   //
-  cmd.declareflag('print_cert', 'print cert details');
-  cmd.declareflag('print_private', 'print cert details');
+  cmd.declareflag('print_cert', 'print cert details from cert');
+  cmd.declareflag('print_private', 'print cert details from privatekey');
 
   cmd.declareflag('genkey', 'generate rsa keys public.pem and private.pem');
 
@@ -128,16 +129,28 @@ begin
   cmd.declareflag('signreq', 'make a certificate from a csr, read from filename and cert, write to filename.crt');
   //cmd.declareflag('selfsign', 'make a self sign cert, write to cert.crt cert.key');
 
+  cmd.declareflag('set-password', 'set password from a private key,read from privatekey and password (optional) - if no password, will remove the existing password ');
+
   cmd.declareflag('dertopem', 'convert a binary/der private key or cert to base 64 pem format, read from cert or privatekey, write to cert.crt or privatekey.key ');
   cmd.declareflag('pemtoder', 'convert a base 64 pem format to binary/der private key or cert, read from cert or privatekey, write to cert.der or privatekey.der ');
-  cmd.declareflag('p12topem', 'convert a pfx to pem, read from cert, write to filename.crt and filename.key');
-  cmd.declareflag('pemtop12', 'convert a pem to pfx, read from cert and privatekey, write to filename');
+  cmd.declareflag('p12topem', 'convert a pfx to pem, read from cert, write to cert.crt and cert.key');
+  cmd.declareflag('pemtop12', 'convert a pem to pfx, read from cert and privatekey, write to cert.pfx');
   cmd.declareflag('p7topem', 'convert a p7b to pem, read from cert, write to cert.crt');
   cmd.declareflag('pemtop7', 'convert a pem to p7b, read from cert, write to cert.p7b');
   //
   cmd.parse(cmdline);
 
   debug:= cmd.readString('debug')='true';
+
+  if cmd.existsProperty('set-password')=true then
+  begin
+    LoadSSL;
+    privatekey:=cmd.readString('privatekey');
+    password:=cmd.readString('password');
+    if set_password(privatekey,password)=true then writeln('ok') else writeln('not ok');
+    freessl;
+    exit;
+  end;
 
   if cmd.existsProperty('encrypt')=true then
   begin
@@ -262,16 +275,13 @@ begin
     begin
     try
     LoadSSL;
-    //out
-    filename:=cmd.readString('filename');
-    if filename='' then filename:='cert.pfx';
     //in
     cert:=cmd.readString('cert') ;
     if cert='' then cert:='cert.crt';
     privatekey:=cmd.readString('privatekey') ;
     if privatekey='' then privatekey:=changefileext(cert,'.key');
     //
-    if PEM2PFX (filename,cmd.readString('password'),privatekey,cert)=true then writeln('ok') else writeln('not ok');
+    if PEM2PFX (cmd.readString('password'),privatekey,cert)=true then writeln('ok') else writeln('not ok');
     finally
     FreeSSL;
     end;
@@ -356,9 +366,9 @@ begin
     begin
     try
     LoadSSL;
-    filename:=cmd.readString('filename');
-    if filename='' then exit;
-    if print_cert(filename)=true then writeln('ok') else writeln('not ok');
+    cert:=cmd.readString('cert');
+    if cert='' then exit;
+    if print_cert(cert)=true then writeln('ok') else writeln('not ok');
     finally
     FreeSSL;
     end;
@@ -369,10 +379,10 @@ begin
     begin
     try
     LoadSSL;
-    filename:=cmd.readString('filename');
-    if filename='' then exit;
+    privatekey:=cmd.readString('privatekey');
+    if privatekey='' then exit;
     password:=cmd.readString('password') ;
-    if print_private(filename,password)=true then writeln('ok') else writeln('not ok');
+    if print_private(privatekey,password)=true then writeln('ok') else writeln('not ok');
     finally
     FreeSSL;
     end;

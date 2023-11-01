@@ -16,11 +16,13 @@ function mkreq(cn:string;keyfile,csrfile:string):boolean;
 function signreq(filename:string;cert:string;read_password:string='';alt:string='';ca:boolean=false):boolean;
 //function selfsign(filename:string;subject:string):boolean;
 
+function set_password(filename,password:string):boolean;
+
 function P7B2PEM(filename:string):boolean;
 function PEM2P7B(filename:string):boolean;
 
 function PFX2PEM(filename,export_pwd:string):boolean;
-function PEM2PFX(filename,export_pwd,privatekey,cert:string):boolean;
+function PEM2PFX(export_pwd,privatekey,cert:string):boolean;
 
 function PVTDER2PEM(filename:string):boolean;
 function PVTPEM2DER(filename:string):boolean;
@@ -253,7 +255,7 @@ begin
   end;
 end;
 
-function PEM2PFX(filename,export_pwd,privatekey,cert:string):boolean;
+function PEM2PFX(export_pwd,privatekey,cert:string):boolean;
 var
   err_reason:integer;
   bp:pBIO=nil;
@@ -264,7 +266,6 @@ var
 begin
   result:=false;
   log('Convert2PKCS12');
-  log('filename:'+filename);
   log('cert:'+cert);
   log('privatekey:'+privatekey);
   bp := BIO_new_file(pchar(privatekey), 'r+');
@@ -303,7 +304,7 @@ begin
      end;
 
   log('i2d_PKCS12_bio');
-  bp := BIO_new_file(pchar(filename), 'w+');
+  bp := BIO_new_file(pchar(GetCurrentDir+'\'+changefileext(cert,'.pfx')), 'w+');
   err_reason:=i2d_PKCS12_bio(bp, p12_cert);
   BIO_free(bp);
 
@@ -346,6 +347,8 @@ log('filename:'+filename);
   //log('i2d_PKCS7_bio');
   //result:=i2d_PKCS7_bio (bp,p7)<>-1; //der
   //if result=false then writeln('i2d_X509_bio failed');
+  //https://www.openssl.org/docs/man1.0.2/man3/PKCS7_sign.html
+  //if signcert and pkey are NULL then a certificates only PKCS#7 structure is output.
   p7 := PKCS7_sign(nil, nil, certs, nil, PKCS7_BINARY);
   if p7=nil then writeln('PKCS7_sign failed');
   //finalize the structure
@@ -510,8 +513,7 @@ begin
   if X509Key=nil then exit;
   //
   bp := BIO_new_file(pchar(GetCurrentDir+'\'+changefileext(filename,'.crt')), 'w+');
-  log('PEM_write_bio_PrivateKey');
-  //the private key will have no password
+  log('PEM_write_bio_X509');
   PEM_write_bio_X509 (bp,X509Key);
   BIO_free(bp);
   //
@@ -537,7 +539,8 @@ begin
   pemPrivKeyBio := BIO_new(BIO_s_mem());
   BIO_write(pemPrivKeyBio, @mem_[0], size_);
   BIO_flush(pemPrivKeyBio);
-  privKey := d2i_PrivateKey_bio(pemPrivKeyBio, privKey);
+  //BIO_read_filename easier?;
+  privKey := d2i_PrivateKey_bio(pemPrivKeyBio, privKey {nil?});
   if privkey=nil then exit;
   //
   bp := BIO_new_file(pchar(GetCurrentDir+'\'+changefileext(filename,'.key')), 'w+');
@@ -592,7 +595,7 @@ begin
    X509_sign(x, pkey, EVP_sha256 ());
 
    bp := BIO_new_file(pchar(ChangeFileExt (filename,'.key')), 'w+');
-  //PEM_write_bio_PrivateKey(bp,pkey,EVP_des_ede3_cbc(),pchar(''),0,nil,nil);
+  //PEM_write_bio_PrivateKey(bp,pkey,nil,nil,0,nil,nil);
   //if you want a prompt for passphrase
   log('PEM_write_bio_PrivateKey');
   PEM_write_bio_PrivateKey(bp,pkey,EVP_des_ede3_cbc(),nil,0,nil,nil);
@@ -908,7 +911,7 @@ X509_sign(x509, pkey, EVP_sha256());
 if privatekey='' then
 begin
   bp := BIO_new_file(pchar(GetCurrentDir+'\'+ChangeFileExt (filename,'.key')), 'w+');
-  //PEM_write_bio_PrivateKey(bp,pkey,EVP_des_ede3_cbc(),pchar(''),0,nil,nil);
+  //PEM_write_bio_PrivateKey(bp,pkey,nil,nil,0,nil,nil);
   //if you want a prompt for passphrase
   log('PEM_write_bio_PrivateKey');
   ret:= PEM_write_bio_PrivateKey(bp,pkey,EVP_des_ede3_cbc(),nil,0,nil,nil);
@@ -1319,6 +1322,30 @@ begin
   }
   //
   result:=true;
+end;
+
+function set_password(filename,password:string):boolean;
+var
+pkey:pEVP_PKEY ;
+bp:pBio;
+begin
+result:=false;
+pkey:=LoadPrivateKey (filename);
+if pkey=nil then
+           begin
+           writeln('LoadPrivateKey failed');
+           exit;
+           end;
+
+  bp := BIO_new_file(pchar(GetCurrentDir+'\'+'new_'+filename), 'w+');
+  log('PEM_write_bio_PrivateKey');
+  //with or without a password
+  if password=''
+     then result:=PEM_write_bio_PrivateKey(bp,pkey,nil,nil,0,nil,nil)<>-1
+     else result:=PEM_write_bio_PrivateKey(bp,pkey,EVP_des_ede3_cbc,pchar(password),length(password),nil,nil)<>-1;
+
+  BIO_free(bp);
+
 end;
 
 end.
