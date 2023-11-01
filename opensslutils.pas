@@ -11,6 +11,7 @@ uses
 procedure LoadSSL;
 procedure FreeSSL;
 function generate_rsa_key:boolean;
+function generate_rsa_key_2:boolean;
 function mkcert(filename:string;cn:string;privatekey:string='';read_password:string='';serial:string='';ca:boolean=false):boolean;
 function mkreq(cn:string;keyfile,csrfile:string):boolean;
 function signreq(filename:string;cert:string;read_password:string='';alt:string='';ca:boolean=false):boolean;
@@ -73,6 +74,58 @@ begin
   SetLength(Buf, 0);
 end;
 
+function LoadPEMFile(filePath: string): PBio;
+var
+{$IFNDEF MSWINDOWS}
+  LEncoding: TEncoding;
+  LOffset: Integer;
+{$ENDIF}
+  Buffer: TBytes;
+  Stream: TStream;
+begin
+  log('LoadPEMFile');
+  Stream := TFileStream.Create(filePath, fmOpenRead or fmShareDenyWrite);
+  try
+    SetLength(Buffer, Stream.size);
+    Stream.ReadBuffer(Buffer[0], Stream.size);
+{$IFNDEF MSWINDOWS}
+{On traite les problèmes d'encodage de flux sur les plateformes différentes de Windows}
+    LEncoding := nil;
+    LOffset := TEncoding.GetBufferEncoding(Buffer, LEncoding);
+    Buffer := LEncoding.Convert(LEncoding, TEncoding.UTF8, Buffer, LOffset,
+      Length(Buffer) - LOffset);
+{$ENDIF}
+    Result := BIO_new_mem_buf(@Buffer[0], Length(Buffer));
+  finally
+    Stream.free;
+  end;
+end;
+
+function LoadCertPublicKey(filePath: string): PEVP_PKEY;
+var
+  mem: PBIO;
+  FX509: pX509;
+  //Key: PEVP_PKEY;
+  x: pX509=nil;
+begin
+  log('LoadCertPublicKey: '+filepath);
+  //KeyBuffer := LoadPEMFile(filepath);
+  //if KeyBuffer = nil then raise Exception.Create('Impossible de charger le buffer X509');
+
+  mem := BIO_new(BIO_s_file());
+  log('BIO_read_filename');
+  BIO_read_filename(mem, PAnsiChar(filePath));
+
+  try
+    FX509 := PEM_read_bio_X509(mem, x, nil, nil);
+    if not Assigned(FX509) then
+      raise Exception.Create('PEM_read_bio_X509 failed');
+    result := X509_get_pubkey(FX509);
+  finally
+    BIO_free(mem);
+  end;
+end;
+
 function LoadPublicKey(KeyFile: string) :pEVP_PKEY ;
 var
   mem: pBIO;
@@ -110,33 +163,6 @@ begin
   end;
 end;
 
-function LoadPEMFile(filePath: string): PBio;
-var
-{$IFNDEF MSWINDOWS}
-  LEncoding: TEncoding;
-  LOffset: Integer;
-{$ENDIF}
-  Buffer: TBytes;
-  Stream: TStream;
-begin
-  log('LoadPEMFile');
-  Stream := TFileStream.Create(filePath, fmOpenRead or fmShareDenyWrite);
-  try
-    SetLength(Buffer, Stream.size);
-    Stream.ReadBuffer(Buffer[0], Stream.size);
-{$IFNDEF MSWINDOWS}
-{On traite les problèmes d'encodage de flux sur les plateformes différentes de Windows}
-    LEncoding := nil;
-    LOffset := TEncoding.GetBufferEncoding(Buffer, LEncoding);
-    Buffer := LEncoding.Convert(LEncoding, TEncoding.UTF8, Buffer, LOffset,
-      Length(Buffer) - LOffset);
-{$ENDIF}
-    Result := BIO_new_mem_buf(@Buffer[0], Length(Buffer));
-  finally
-    Stream.free;
-  end;
-end;
-
 {
 Importer une clé publique RSA
 Un fichier au format PEM contenant une clé publique RSA
@@ -144,7 +170,7 @@ commence par —–BEGIN PUBLIC KEY—–
 puis est suivi de la clé en Base64
 et se termine par —–END PUBLIC KEY—–.
 }
-function FromOpenSSLPublicKey(filePath: string): pRSA;
+function RSAOpenSSLPublicKey(filePath: string): pRSA;
 var
   KeyBuffer: PBIO;
   pkey: PEVP_PKEY;
@@ -181,7 +207,7 @@ Ensuite, il y a des informations sur l’algorithme utilisé pour chiffrer la cl
 puis il y a la clé chiffrée, en Base64.
 Enfin, le fichier se termine par —–END RSA PRIVATE KEY—–.
 }
-function FromOpenSSLPrivateKey(filePath: string; pwd: String=''): pRSA;
+function RSAOpenSSLPrivateKey(filePath: string; pwd: String=''): pRSA;
 var
   KeyBuffer: PBio;
   p: PReadKeyChar;
@@ -223,7 +249,7 @@ Un fichier au format PEM contenant un certificat X509
 commence par —–BEGIN CERTIFICATE—– puis est suivi de la clé en Base64
 et se termine par —–END CERTIFICATE—–.
 }
-function FromOpenSSLCert(filePath: string): pRSA;
+function RSAOpenSSLCert(filePath: string): pRSA;
 var
   KeyBuffer: PBIO;
   FX509: pX509;
@@ -696,7 +722,7 @@ begin
   BIO_free(bp);
   }
   try
-  rsa:=FromOpenSSLPrivateKey(ChangeFileExt (cert,'.key'),read_password);
+  rsa:=RSAOpenSSLPrivateKey(ChangeFileExt (cert,'.key'),read_password);
   except
   on e:exception do begin log(e.message,1);exit;end;
   end; //try
@@ -849,7 +875,7 @@ result:=false;
   //pkey:=LoadPrivateKey(privatekey);
   //if pkey=nil then begin log('pkey is nul');exit;end;
   try
-  rsa:=FromOpenSSLPrivateKey(privatekey,read_password); //password will be prompted
+  rsa:=RSAOpenSSLPrivateKey(privatekey,read_password); //password will be prompted
   except
   on e:exception do begin log(e.message,1);exit;end;
   end; //try
@@ -914,7 +940,7 @@ begin
   //PEM_write_bio_PrivateKey(bp,pkey,nil,nil,0,nil,nil);
   //if you want a prompt for passphrase
   log('PEM_write_bio_PrivateKey');
-  ret:= PEM_write_bio_PrivateKey(bp,pkey,EVP_des_ede3_cbc(),nil,0,nil,nil);
+  ret:= PEM_write_bio_PrivateKey(bp,pkey,EVP_des_ede3_cbc(),nil,0,nil,nil); //not saving as RSA key??
   BIO_free(bp);
   if ret=0 then exit;
 end;
@@ -972,7 +998,7 @@ result:=false;
     //pkey:=LoadPrivateKey(privatekey);
     //if pkey=nil then begin log('pkey is nul');exit;end;
     try
-    rsa:=FromOpenSSLPrivateKey(keyfile,''); //password will be prompted
+    rsa:=RSAOpenSSLPrivateKey(keyfile,''); //password will be prompted
     except
     on e:exception do begin log(e.message,1);exit;end;
     end; //try
@@ -1040,6 +1066,21 @@ end;
 //ssh-keygen -b 2048 -t rsa -m PEM
 //and use either the pub or priv key from there
 //see also https://docs.oracle.com/en/cloud/cloud-at-customer/occ-get-started/generate-ssh-key-pair.html
+
+//https://stackoverflow.com/questions/20065304/differences-between-begin-rsa-private-key-and-begin-private-key
+//BEGIN RSA PRIVATE KEY is PKCS#1 and is just an RSA key.
+//It is essentially just the key object from PKCS#8, but without the version or algorithm identifier in front.
+//BEGIN PRIVATE KEY is PKCS#8 and indicates that the key type is included in the key data itself.
+
+//https://superuser.com/questions/1720991/differences-between-begin-rsa-private-key-and-begin-openssh-private-key
+//PKCS#1 key files (BEGIN RSA PRIVATE KEY) come from the PEM encrypted messaging project.
+//The format is fairly outdated, e.g. it's weak against passphrase bruteforcing. Even OpenSSL itself later started using a newer PKCS#8 format (which uses BEGIN PRIVATE KEY or BEGIN ENCRYPTED PRIVATE KEY headers) for all new private keys.
+
+//https://stackoverflow.com/questions/65449771/difference-between-openssl-genrsa-and-openssl-genpkey-algorithm-rsa#:~:text=Both%20ways%20create%20RSA%20keys,KEY%22%20for%20more%20on%20this.
+//Both ways create RSA keys, albeit in different formats.
+//genrsa outputs a RSA key in PKCS#1 format while genpkey outputs a more generic container which can manage different kinds of keys (like ECC).
+
+//PEM_write*_PrivateKey (since 1.0.0 in 2010) writes PKCS8-format
 function generate_rsa_key:boolean;
 var
 
@@ -1063,6 +1104,7 @@ begin
   bp_private :=nil;
   bits:=2048;
   e :=RSA_F4;
+
 	// 1. generate rsa key
 	bne := BN_new();
 	ret := BN_set_word(bne,e);
@@ -1073,14 +1115,81 @@ begin
         ret := RSA_generate_key_ex(rsa, bits, bne, nil);
 	if ret <> 1 then goto free_all;
 
-
-	// 2. save public key
-	bp_public := BIO_new_file(pchar(GetCurrentDir+'\public.pem'), 'w+');
-	//ret := PEM_write_bio_RSAPublicKey(bp_public, rsa);
         log('EVP_PKEY_new');
         pkey := EVP_PKEY_new();
         log('EVP_PKEY_assign_RSA');
         EVP_PKEY_assign(pkey,EVP_PKEY_RSA,PCharacter(rsa));
+
+	// 2. save public key
+	bp_public := BIO_new_file(pchar(GetCurrentDir+'\public.pem'), 'w+');
+        log('2. save public key OK');
+        //ret:=PEM_write_bio_RSAPublicKey (bp_public ,rsa);
+        ret:=PEM_write_bio_PUBKEY (bp_public ,pkey); //why not RSA ?
+	if ret <>1 then goto free_all;
+
+	// 3. save private key
+	bp_private := BIO_new_file(pchar(GetCurrentDir+'\private.pem'), 'w+');
+        //the private key will have no password
+        log('3. save private key');
+        log('no password...');
+	ret := PEM_write_bio_RSAPrivateKey(bp_private, rsa, nil, nil, 0, nil, nil);  //why RSA?
+        //ret := PEM_write_bio_PrivateKey(bp_private, pkey, nil, nil, 0, nil, nil);
+
+	// 4. free
+free_all:
+       log('free_all');
+	BIO_free_all(bp_public);
+	BIO_free_all(bp_private);
+	RSA_free(rsa);
+	BN_free(bne);
+        //if pkey<>nil then EVP_PKEY_free(pkey);
+
+	if ret=1 then result:=true else result:=false;
+end;
+
+//PKCS#8
+function generate_rsa_key_2:boolean;
+var
+ret:integer; //= 0;
+rsa:pRSA;//				 = nil;
+bne:pBIGNUM;// = nil;
+bp_public:pBIO;// = nil;
+bp_private:pBIO;// = nil;
+
+bits:integer; // = 2048;
+e:ulong; // = RSA_F4;
+//
+pkey:PEVP_PKEY;
+label free_all;
+begin
+
+  //
+  ret:=0;
+  rsa:=nil;
+  bne:=nil;
+  bp_public :=nil;
+  bp_private :=nil;
+  bits:=2048;
+  e :=RSA_F4;
+
+	// 1. generate rsa key
+	bne := BN_new();
+	ret := BN_set_word(bne,e);
+	if ret <> 1 then goto free_all;
+
+	rsa := RSA_new();
+        log('1. generate rsa key');
+        ret := RSA_generate_key_ex(rsa, bits, bne, nil);
+	if ret <> 1 then goto free_all;
+
+        log('EVP_PKEY_new');
+        pkey := EVP_PKEY_new();
+        log('EVP_PKEY_set1_RSA');
+        ret:=EVP_PKEY_set1_RSA (pkey,rsa);
+        if ret <> 1 then goto free_all;
+
+        // 2. save public key
+	bp_public := BIO_new_file(pchar(GetCurrentDir+'\public.pem'), 'w+');
         log('2. save public key OK');
         ret:=PEM_write_bio_PUBKEY (bp_public ,pkey);
 	if ret <>1 then goto free_all;
@@ -1090,17 +1199,19 @@ begin
         //the private key will have no password
         log('3. save private key');
         log('no password...');
-	ret := PEM_write_bio_RSAPrivateKey(bp_private, rsa, nil, nil, 0, nil, nil);
+        ret := PEM_write_bio_PrivateKey(bp_private, pkey, nil, nil, 0, nil, nil);
 
 	// 4. free
 free_all:
-
+        log('free_all');
 	BIO_free_all(bp_public);
 	BIO_free_all(bp_private);
 	RSA_free(rsa);
 	BN_free(bne);
+        if pkey<>nil then EVP_PKEY_free(pkey);
 
 	if ret=1 then result:=true else result:=false;
+
 end;
 
 //RSA_public_encrypt, RSA_private_decrypt - RSA public key cryptography
@@ -1262,10 +1373,12 @@ end;
 function print_private(filename:string;password:string=''):boolean;
 var
    rsa:pRSA=nil;
+   pkey:pEVP_PKEY ;
 begin
   result:=false;
-  rsa:=FromOpenSSLPrivateKey (filename,password); //password will be prompted
-
+  //rsa:=RSAOpenSSLPrivateKey (filename,password); //password will be prompted
+  pkey:=LoadPrivateKey (filename);
+  rsa:=EVP_PKEY_get1_RSA(pkey);
   //try if rsa<>nil then Writeln('BN_bn2hex N: ', strpas(BN_bn2hex(rsa^.n )));except end;
   //try if rsa<>nil then Writeln('BN_bn2hex D: ', strpas(BN_bn2hex(rsa^.d  )));except end; //exponent
   try if rsa<>nil then Writeln('BN_bn2hex E: ', BN_bn2hex(rsa^.e ));except end;
@@ -1288,7 +1401,10 @@ var
 begin
 
   result:=false;
-  rsa:=FromOpenSSLCert(filename);
+  //rsa:=RSAOpenSSLCert(filename);
+  key:=LoadCertPublicKey(filename);
+  rsa:=EVP_PKEY_get1_RSA(key);
+
   //try if rsa<>nil then Writeln('BN_bn2hex N: ', strpas(BN_bn2hex(rsa^.n )));except end;
   //try if rsa<>nil then Writeln('BN_bn2hex D: ', strpas(BN_bn2hex(rsa^.d  )));except end; //exponent
   //n := BN_num_bytes(rsa^.e); writeln(inttostr(n)+' bytes');

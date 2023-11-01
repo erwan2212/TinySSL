@@ -183,7 +183,7 @@ begin
     begin
     try
     LoadSSL;
-    if generate_rsa_key=true then writeln('ok') else writeln('not ok');
+    if generate_rsa_key =true then writeln('ok') else writeln('not ok');
     finally
     FreeSSL;
     end;
