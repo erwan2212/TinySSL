@@ -21,12 +21,16 @@ TinySSL, aka playing with openssl library (libeay32).<br/>
 --mkreq                 make a certificate service request, read from privatekey & write to filename.csr<br/>
                         filename.key (if privatekey not specified)<br/>
 --signreq               make a certificate from a csr, read from filename and cert, write to filename.crt<br/>
+--set-password          set password from a private key,read from privatekey and password (optional) - if no<br/>
+                        password, will remove the existing password<br/>
 --dertopem              convert a binary/der private key or cert to base 64 pem format, read from cert or<br/>
                         privatekey, write to cert.crt or privatekey.key<br/>
 --pemtoder              convert a base 64 pem format to binary/der private key or cert, read from cert or<br/>
                         privatekey, write to cert.der or privatekey.der<br/>
---p12topem              convert a pfx to pem, read from filename, write to filename.crt and filename.key<br/>
---pemtop12              convert a pem to pfx, read from cert and privatekey, write to filename<br/>
+--p12topem              convert a pfx to pem, read from cert, write to cert.crt and cert.key<br/>
+--pemtop12              convert a pem to pfx, read from cert and privatekey, write to cert.pfx<br/>
+--p7topem               convert a p7b to pem, read from cert, write to cert.crt<br/>
+--pemtop7               convert a pem to p7b, read from cert, write to cert.p7b<br/>
 <br/><br/>
 Example : create a root ca (reusing a previous key), create a csr (reusing a previous key) and generate a certificate (that will work in latest chrome).<br/>
 <br/><br/>
