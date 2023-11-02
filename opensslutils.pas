@@ -454,6 +454,7 @@ begin
   if pkey=nil then exit;
   bp := BIO_new_file(pchar(GetCurrentDir+'\'+changefileext(filename,'.key')), 'w+');
   log('PEM_write_bio_PrivateKey');
+  log('no password...');
   //the private key will have no password
   PEM_write_bio_PrivateKey(bp,pkey,nil{EVP_des_ede3_cbc()},nil,0,nil,nil);
   BIO_free(bp);
@@ -573,6 +574,7 @@ begin
   //
   bp := BIO_new_file(pchar(GetCurrentDir+'\'+changefileext(filename,'.key')), 'w+');
   log('PEM_write_bio_PrivateKey');
+  log('no password...');
   //the private key will have no password
   PEM_write_bio_PrivateKey(bp,privKey,nil{EVP_des_ede3_cbc()},nil,0,nil,nil);
   BIO_free(bp);
@@ -1049,10 +1051,10 @@ result:=false;
         begin
         bp := BIO_new_file(pchar(GetCurrentDir+'\'+changefileext(csrfile,'.key')), 'w+');
         //the private key will have no password
-        log('no password...');
         //log('PEM_write_bio_RSAPrivateKey');
         //ret := PEM_write_bio_RSAPrivateKey(bp, rsa, nil, nil, 0, nil, nil);
         log('PEM_write_bio_PrivateKey');
+        log('no password...');
         ret := PEM_write_bio_PrivateKey(bp, key, nil, nil, 0, nil, nil);
 	BIO_free(bp);
         end;
