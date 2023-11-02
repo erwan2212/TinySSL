@@ -146,7 +146,7 @@ begin
   end;
 end;
 
-function LoadPrivateKey(KeyFile: string) :pEVP_PKEY;
+function LoadPrivateKey(KeyFile: string;password:string='') :pEVP_PKEY;
 var
   mem: pBIO;
   k: pEVP_PKEY;
@@ -157,7 +157,9 @@ begin
   BIO_read_filename(mem, PAnsiChar(KeyFile));
   try
     log('PEM_read_bio_PrivateKey');
-    result := PEM_read_bio_PrivateKey(mem, k, nil, nil);
+    if password=''
+       then result := PEM_read_bio_PrivateKey(mem, k, nil, nil)
+       else result := PEM_read_bio_PrivateKey(mem, k, nil, pchar(password));
   finally
     BIO_free_all(mem);
   end;
@@ -714,23 +716,24 @@ begin
   x509_ca:=PEM_read_bio_X509(bp,nil,nil,nil);
   BIO_free(bp);
   if x509_ca=nil then goto free_all;
+
   //loadCAPrivateKey
-  {
-  bp := BIO_new_file(pchar('ca.key'), 'r+');
-  log('PEM_read_bio_RSAPrivateKey');
-  rsa:=PEM_read_bio_RSAPrivateKey   (bp,nil,nil,nil);
-  BIO_free(bp);
-  }
   try
-  rsa:=RSAOpenSSLPrivateKey(ChangeFileExt (cert,'.key'),read_password);
+  //rsa:=RSAOpenSSLPrivateKey(ChangeFileExt (cert,'.key'),read_password);
+  pkey:=LoadPrivateKey (ChangeFileExt (cert,'.key'),read_password);
+  if pkey=nil then exception.Create ('pkey is nul');
   except
   on e:exception do begin log(e.message,1);exit;end;
   end; //try
-  //
+
+  //generate key
+  {
   log('EVP_PKEY_new');
   pkey := EVP_PKEY_new();
   log('EVP_PKEY_assign_RSA');
   EVP_PKEY_assign(pkey,EVP_PKEY_RSA,PCharacter(rsa));
+  }
+
   // load X509 Req
   bp := BIO_new_file(pchar(filename), 'r+');
   log('PEM_read_bio_X509_REQ');
@@ -797,7 +800,8 @@ begin
   PEM_write_bio_PrivateKey(bp,pkey,EVP_des_ede3_cbc(),nil,0,nil,nil);
   BIO_free(bp);
   }
-  //
+
+  //save cert
   bp := BIO_new_file(pchar(ChangeFileExt (filename,'.crt') ), 'w+');
   log('PEM_write_bio_X509');
   PEM_write_bio_X509(bp,x509_cert);
@@ -868,25 +872,30 @@ result:=false;
     nil,   //* callback - can be NULL if we aren't displaying progress */
     nil    //* callback argument - not needed in this case */
     );
+  //generate key
+  //OpenSSL provides the EVP_PKEY structure for storing an algorithm-independent private key in memory
+  log('EVP_PKEY_new');
+  pkey := EVP_PKEY_new();
+  //assign key to our struct
+  //log('EVP_PKEY_assign_RSA');
+  //EVP_PKEY_assign(pkey,EVP_PKEY_RSA,PCharacter(rsa));
+  log('EVP_PKEY_set1_RSA');
+  EVP_PKEY_set1_RSA (pkey,rsa);
   end
   else
   begin
   log('Reusing '+privatekey+'...',1);
-  //pkey:=LoadPrivateKey(privatekey);
-  //if pkey=nil then begin log('pkey is nul');exit;end;
   try
-  rsa:=RSAOpenSSLPrivateKey(privatekey,read_password); //password will be prompted
+  //rsa:=RSAOpenSSLPrivateKey(privatekey,read_password); //password will be prompted
+  pkey:=LoadPrivateKey (privatekey,read_password);
+  if pkey=nil then exception.Create ('pkey is nul');
   except
   on e:exception do begin log(e.message,1);exit;end;
   end; //try
   end;
-//generate key
-//OpenSSL provides the EVP_PKEY structure for storing an algorithm-independent private key in memory
-log('EVP_PKEY_new');
-pkey := EVP_PKEY_new();
-//assign key to our struct
-log('EVP_PKEY_assign_RSA');
-EVP_PKEY_assign(pkey,EVP_PKEY_RSA,PCharacter(rsa));
+
+
+
 //OpenSSL uses the X509 structure to represent an x509 certificate in memory
 log('X509_new');
 x509 := X509_new();
@@ -958,9 +967,10 @@ PEM_write_bio_X509(bp,x509);
 PEM_write_bio_PrivateKey(bp,pkey,EVP_des_ede3_cbc(),nil,0,nil,nil);
 BIO_free(bp);
 }
-//
-EVP_PKEY_free(pkey);
+//free
 X509_free(x509);
+EVP_PKEY_free(pkey);
+RSA_free(rsa);
 //
 result:=true;
 end;
@@ -991,39 +1001,32 @@ result:=false;
     nil,   //* callback - can be NULL if we aren't displaying progress */
     nil    //* callback argument - not needed in this case */
     );
+    //generate key
+    //OpenSSL provides the EVP_PKEY structure for storing an algorithm-independent private key in memory
+    log('EVP_PKEY_new');
+    key := EVP_PKEY_new();
+    //assign key to our struct
+    //log('EVP_PKEY_assign_RSA');
+    //EVP_PKEY_assign(pkey,EVP_PKEY_RSA,PCharacter(rsa));
+    log('EVP_PKEY_set1_RSA');
+    EVP_PKEY_set1_RSA (key,rsa);
     end
     else
     begin
     log('Reusing '+keyfile+'...',1);
-    //pkey:=LoadPrivateKey(privatekey);
-    //if pkey=nil then begin log('pkey is nul');exit;end;
     try
-    rsa:=RSAOpenSSLPrivateKey(keyfile,''); //password will be prompted
+    //rsa:=RSAOpenSSLPrivateKey(keyfile,''); //password will be prompted
+    key:=LoadPrivateKey(keyfile);
+    if key=nil then exception.Create ('pkey is nul');
     except
     on e:exception do begin log(e.message,1);exit;end;
     end; //try
     end;
 
-        //we did not load a privatekey so lets save it
-        if keyfile='' then
-        begin
-        bp := BIO_new_file(pchar(GetCurrentDir+'\'+changefileext(csrfile,'.key')), 'w+');
-        //the private key will have no password
-        log('PEM_write_bio_RSAPrivateKey');
-        log('no password...');
-        ret := PEM_write_bio_RSAPrivateKey(bp, rsa, nil, nil, 0, nil, nil);
-	BIO_free(bp);
-        end;
-
         log('X509_REQ_new');
 	req := X509_REQ_new();
-
 	if req=nil then exit;
 
-        log('EVP_PKEY_new');
-	key := EVP_PKEY_new();
-        log('EVP_PKEY_assign');
-	EVP_PKEY_assign(key,EVP_PKEY_RSA,PCharacter(rsa));
         //
 	X509_REQ_set_version(req, 0);
 	X509_REQ_set_pubkey(req, key);
@@ -1041,13 +1044,27 @@ result:=false;
         log('X509_REQ_sign');
 	X509_REQ_sign(req, key, EVP_sha256());
 
-	EVP_PKEY_free(key);
+        //we did not load a privatekey so lets save it
+        if keyfile='' then
+        begin
+        bp := BIO_new_file(pchar(GetCurrentDir+'\'+changefileext(csrfile,'.key')), 'w+');
+        //the private key will have no password
+        log('no password...');
+        //log('PEM_write_bio_RSAPrivateKey');
+        //ret := PEM_write_bio_RSAPrivateKey(bp, rsa, nil, nil, 0, nil, nil);
+        log('PEM_write_bio_PrivateKey');
+        ret := PEM_write_bio_PrivateKey(bp, key, nil, nil, 0, nil, nil);
+	BIO_free(bp);
+        end;
 
+        //save cert
         bp := BIO_new_file(pchar(GetCurrentDir+'\'+csrfile), 'w+');
         log('PEM_write_bio_X509_REQ');
         PEM_write_bio_X509_REQ(bp, req);
 	BIO_free(bp);
 
+        //free
+        EVP_PKEY_free(key);
 	X509_REQ_free(req);
 
 result:=true;
@@ -1377,7 +1394,7 @@ var
 begin
   result:=false;
   //rsa:=RSAOpenSSLPrivateKey (filename,password); //password will be prompted
-  pkey:=LoadPrivateKey (filename);
+  pkey:=LoadPrivateKey (filename,password);
   rsa:=EVP_PKEY_get1_RSA(pkey);
   //try if rsa<>nil then Writeln('BN_bn2hex N: ', strpas(BN_bn2hex(rsa^.n )));except end;
   //try if rsa<>nil then Writeln('BN_bn2hex D: ', strpas(BN_bn2hex(rsa^.d  )));except end; //exponent
