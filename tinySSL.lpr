@@ -112,7 +112,7 @@ begin
   cmd.declareString('publickey', 'path to a publickey file, not needed if you have the privatekey');
   cmd.declareString('cert', 'path to a certificate');
   //cmd.declareString('input', 'something to be hashed');
-  cmd.declareString('algo', 'md4 md5 sha sha1 sha224 sha256 sha284 sha512 ripemd160 / des_ecb des_cbc rc4 aes_128_ecb aes_192_ecb aes_256_ecb');
+  cmd.declareString('algo', 'md4 md5 sha sha1 sha224 sha256 sha284 sha512 ripemd160 / des_ecb des_cbc des_ede3_ecb des_ede3_cbc rc2_ecb rc4 aes_128_ecb aes_192_ecb aes_256_ecb');
   cmd.declareString('debug', 'true|false','false');
 
   cmd.declareString('filename', 'local filename');

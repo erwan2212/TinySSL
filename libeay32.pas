@@ -1250,6 +1250,7 @@ function EVP_idea_ecb: pEVP_CIPHER; cdecl;
 function EVP_idea_ofb: pEVP_CIPHER; cdecl;
 function EVP_get_cipherbyname(name: PCharacter): pEVP_CIPHER; cdecl;
 
+function EVP_des_ede3_ecb: pEVP_CIPHER; cdecl;
 function EVP_rc4: pEVP_CIPHER; cdecl;
 function EVP_rc2_ecb: pEVP_CIPHER; cdecl;
 function EVP_aes_128_ecb: pEVP_CIPHER; cdecl;
@@ -2063,6 +2064,7 @@ function EVP_idea_ecb; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$END
 function EVP_idea_ofb; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 function EVP_get_cipherbyname; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 
+function EVP_des_ede3_ecb; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 function EVP_rc4; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 function EVP_rc2_ecb; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 function EVP_aes_128_ecb; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
