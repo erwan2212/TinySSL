@@ -37,6 +37,9 @@ function print_private(filename:string;password:string=''):boolean;
 function EncryptPub(sometext:string;var encrypted:string):boolean;
 function DecryptPriv(ACryptedData:string):boolean;
 
+function hash(algo,input:string):boolean;
+function crypt(algo,input:string):boolean;
+
 implementation
 
 type
@@ -1481,6 +1484,145 @@ if pkey=nil then
 
   BIO_free(bp);
 
+end;
+
+function crypt(algo,input:ansistring):boolean;
+const EVP_MAX_MD_SIZE=64;
+const MD5_DIGEST_LENGTH=16;
+      key:array[0..15] of byte=($11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11);
+      iv:array[0..7] of byte=($22,$22,$22,$22,$22,$22,$22,$22);
+var
+context:PEVP_CIPHER_CTX ;
+cipher :pEVP_CIPHER;
+buffer:array [0..EVP_MAX_MD_SIZE -1] of byte;
+buffer_len:cardinal=0;
+i:byte;
+ret,remain:integer;
+//
+//key:array [0..7] of char;
+//iv:array [0..7] of char;
+keystr:array [0..MD5_DIGEST_LENGTH-1] of byte;
+random:array of byte;
+begin
+   result:=false;
+
+   log('input:'+input);
+   log('algo:'+algo);
+
+   log('EVP_CIPHER_CTX_new');
+   context:=EVP_CIPHER_CTX_new ;
+
+   //cbc requires iv
+   //ecb does not require iv
+   log('EVP_CIPHER_CTX_init');
+   EVP_CIPHER_CTX_init (context);
+   //
+   //DES uses a key length of 8 bytes (64 bits).
+   //DES uses an IV length of 8 bytes (64 bits).
+   //Triple DES uses a key length of 24 bytes (192 bits).
+   if lowercase(algo)='des_ecb' then cipher := EVP_des_ecb(); //ok
+   if lowercase(algo)='des_cbc' then cipher := EVP_des_cbc(); //ok
+   //
+   if lowercase(algo)='rc4' then cipher := EVP_rc4(); //ok
+   if lowercase(algo)='rc2_rcb' then cipher := EVP_rc2_ecb (); //ok
+
+   //The following algorithms will be used based on the size of the key:
+   //16 bytes = AES-128
+   //24 bytes = AES-192
+   //32 bytes = AES-256
+   if lowercase(algo)='aes_128_ecb' then cipher := EVP_aes_128_ecb(); //ok
+   if lowercase(algo)='aes_192_ecb' then cipher := EVP_aes_192_ecb();
+   if lowercase(algo)='aes_256_ecb' then cipher := EVP_aes_256_ecb();
+
+   if cipher=nil then exit;
+
+   //lets md5 hash our key (which will give us 16 bytes)
+   //this is optional : all we need is a 16 bytes buffer acting as a key
+   //md5 digest in one go thanks to EVP_Digest
+   log('EVP_Digest');
+   ret:=EVP_Digest(@key[0],sizeof(key),@keystr,buffer_len,evp_md5,nil);
+   if ret<>1 then raise exception.Create ('EVP_Digest failed');
+   //writeln(buffer_len);
+   write('key:');
+   for i:=0 to buffer_len -1 do write(inttohex(keystr[i],2));
+   writeln;
+
+   write('iv:');
+   for i:=0 to length(iv) -1 do write(inttohex(iv[i],2));
+   writeln;
+
+   //we could also use a random key (or IV) with size N (hashed or not)
+   setlength(random,16);
+   RAND_bytes(@random[0],length(random));
+   //for i:=0 to length(random) -1 do write(inttohex(random[i],2));
+   //writeln;
+
+   //EVP_CipherInit_ex(context, cipher, nil, nil, nil,1);
+   //EVP_CIPHER_CTX_set_key_length(context, length(key)); // RC2 is an algorithm with variable key size. Therefore the key size must generally be set.
+
+   //It should be set to 1 for encryption, 0 for decryption
+   log('EVP_CipherInit_ex');
+   if pos('_cbc',lowercase(algo))>0
+      then ret:=EVP_CipherInit_ex(context, cipher, nil, @keystr[0], @iv[0],1)
+      else ret:=EVP_CipherInit_ex(context, cipher, nil, @keystr[0], nil,1);
+   if ret<>1 then raise exception.Create ('EVP_CipherInit_ex failed');
+
+   writeln('key_length:'+inttostr(EVP_CIPHER_CTX_key_length(context)));
+   writeln('iv_length:'+inttostr(EVP_CIPHER_CTX_iv_length(context)));
+   writeln('block_size:'+inttostr(EVP_CIPHER_block_size(cipher)));
+
+   log('EVP_CipherUpdate');
+   ret:=EVP_CipherUpdate(context,@buffer[0],@buffer_len,pansichar(input),length(input));
+   if ret<>1 then raise exception.Create ('EVP_CipherUpdate failed');
+   //writeln(buffer_len);
+
+   log('EVP_CipherFinal_ex');
+   remain:=0;
+   ret:=EVP_CipherFinal_ex(context, @buffer[buffer_len], @remain);
+   if ret<>1 then raise exception.Create ('EVP_CipherFinal_ex failed');
+   inc(buffer_len,remain);
+   //writeln(remain);
+
+   log('EVP_CIPHER_CTX_free');
+   EVP_CIPHER_CTX_free (context);
+
+   if buffer_len<=0 then exit;
+   for i:=0 to buffer_len -1 do write(inttohex(buffer[i],2));
+   writeln;
+   result:=true;
+end;
+
+function hash(algo,input:string):boolean;
+const EVP_MAX_MD_SIZE=64;
+var
+context:pEVP_MD_CTX;
+md :pEVP_MD;
+digest:array [0..EVP_MAX_MD_SIZE -1] of byte;
+digest_len:cardinal=0;
+i:byte;
+begin
+   result:=false;
+   context := EVP_MD_CTX_create();
+   //if algo='MD2' then md := EVP_md2();
+   if uppercase(algo)='MD4' then md := EVP_md4();
+   if uppercase(algo)='MD5' then md := EVP_md5();
+   if uppercase(algo)='SHA' then md := EVP_sha();
+   if uppercase(algo)='SHA1' then md := EVP_sha1();
+   if uppercase(algo)='SHA224' then md := EVP_sha224();
+   if uppercase(algo)='SHA256' then md := EVP_sha256();
+   if uppercase(algo)='SHA384' then md := EVP_sha384();
+   if uppercase(algo)='SHA512' then md := EVP_sha256();
+   if uppercase(algo)='RIPEMD160' then md := EVP_ripemd160();
+
+   EVP_DigestInit(context,md);
+   EVP_DigestUpdate(context, pchar(input), length(input));
+   EVP_DigestFinal(context, @digest[0], digest_len);
+   EVP_MD_CTX_destroy (context);
+
+   if digest_len<=0 then exit;
+   for i:=0 to digest_len -1 do write(inttohex(digest[i],2));
+   writeln;
+   result:=true;
 end;
 
 end.

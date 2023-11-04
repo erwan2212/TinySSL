@@ -44,7 +44,7 @@ BYTE            privateExponent[rsapubkey.bitlen/8];
 
 var
   cmd: TCommandLineReader;
-  filename,encrypted,password,privatekey,publickey,cert,cn,alt:string;
+  filename,encrypted,algo,password,privatekey,publickey,cert,cn,alt:string;
   ca:boolean=false;
   hfile_:thandle=thandle(-1);
   mem_:array[0..8192-1] of char;
@@ -111,6 +111,8 @@ begin
   cmd.declareString('privatekey', 'path to a privatekey file');
   cmd.declareString('publickey', 'path to a publickey file, not needed if you have the privatekey');
   cmd.declareString('cert', 'path to a certificate');
+  //cmd.declareString('input', 'something to be hashed');
+  cmd.declareString('algo', 'md4 md5 sha sha1 sha224 sha256 sha284 sha512 ripemd160 / des_ecb des_cbc rc4 aes_128_ecb aes_192_ecb aes_256_ecb');
   cmd.declareString('debug', 'true|false','false');
 
   cmd.declareString('filename', 'local filename');
@@ -120,6 +122,8 @@ begin
   cmd.declareflag('print_private', 'print cert details from privatekey');
 
   cmd.declareflag('genkey', 'generate rsa keys public.pem and private.pem');
+  cmd.declareflag('hash', 'hash password, using algo');
+  cmd.declareflag('crypt', 'crypt password, using algo');
 
   cmd.declareflag('encrypt', 'encrypt a file using public.pem, read from filename');
   cmd.declareflag('decrypt', 'decrypt a file using private.pem, read from filename');
@@ -141,6 +145,26 @@ begin
   cmd.parse(cmdline);
 
   debug:= cmd.readString('debug')='true';
+
+  if cmd.existsProperty('crypt')=true then
+  begin
+    LoadSSL;
+    algo:=cmd.readString('algo');
+    password:=cmd.readString('password');
+    if crypt(algo,password)=true then writeln('ok') else writeln('not ok');
+    freessl;
+    exit;
+  end;
+
+  if cmd.existsProperty('hash')=true then
+  begin
+    LoadSSL;
+    algo:=cmd.readString('algo');
+    password:=cmd.readString('password');
+    if hash(algo,password)=true then writeln('ok') else writeln('not ok');
+    freessl;
+    exit;
+  end;
 
   if cmd.existsProperty('set-password')=true then
   begin
