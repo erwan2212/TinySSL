@@ -24,8 +24,8 @@
         <UnitName Value="OpenSSLUtils"/>
         <IsVisibleTab Value="True"/>
         <EditorIndex Value="1"/>
-        <TopLine Value="1556"/>
-        <CursorPos Y="1578"/>
+        <TopLine Value="1571"/>
+        <CursorPos X="71" Y="1584"/>
         <UsageCount Value="200"/>
         <Loaded Value="True"/>
       </Unit2>

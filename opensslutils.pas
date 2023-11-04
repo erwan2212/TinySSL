@@ -1580,8 +1580,8 @@ begin
    //It should be set to 1 for encryption, 0 for decryption
    log('EVP_CipherInit_ex');
    if pos('_cbc',lowercase(algo))>0
-      then ret:=EVP_CipherInit_ex(context, cipher, nil, @key[0], @iv[0],1)  //or keystr for hash
-      else ret:=EVP_CipherInit_ex(context, cipher, nil, @key[0], nil,1);
+      then ret:=EVP_CipherInit_ex(context, cipher, nil, @key[0], @iv[0],-1)  //or keystr for hash
+      else ret:=EVP_CipherInit_ex(context, cipher, nil, @key[0], nil,-1); //-1 use the previous value
    if ret<>1 then raise exception.Create ('EVP_CipherInit_ex failed');
 
    log('EVP_CipherUpdate');
