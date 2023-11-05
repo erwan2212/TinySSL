@@ -44,7 +44,7 @@ BYTE            privateExponent[rsapubkey.bitlen/8];
 
 var
   cmd: TCommandLineReader;
-  filename,encrypted,algo,password,privatekey,publickey,cert,cn,alt:string;
+  filename,encrypted,key,algo,password,privatekey,cert,cn,alt:string;
   ca:boolean=false;
   hfile_:thandle=thandle(-1);
   mem_:array[0..8192-1] of char;
@@ -103,18 +103,17 @@ begin
   end;
 
   cmd := TCommandLineReader.create;
-  //cmd.declareString('username', 'mandatory');
   cmd.declareString('cn', 'cn');
   cmd.declareString('alt', 'alternate name');
   cmd.declareString('ca', 'true|false','false');
   cmd.declareString('password', 'password');
   cmd.declareString('privatekey', 'path to a privatekey file');
-  cmd.declareString('publickey', 'path to a publickey file, not needed if you have the privatekey');
+  //cmd.declareString('publickey', 'path to a publickey file, not needed if you have the privatekey');
   cmd.declareString('cert', 'path to a certificate');
   //cmd.declareString('input', 'something to be hashed');
   cmd.declareString('algo', 'md4 md5 sha sha1 sha224 sha256 sha284 sha512 ripemd160 / des_ecb des_cbc des_ede3_ecb des_ede3_cbc rc2_ecb rc4 aes_128_ecb aes_192_ecb aes_256_ecb');
+  cmd.declareString('key', 'optional, used by crypt/encrypt');
   cmd.declareString('debug', 'true|false','false');
-
   cmd.declareString('filename', 'local filename');
 
   //
@@ -123,17 +122,18 @@ begin
 
   cmd.declareflag('genkey', 'generate rsa keys public.pem and private.pem');
   cmd.declareflag('hash', 'hash password, using algo');
-  cmd.declareflag('crypt', 'crypt password, using algo');
+  cmd.declareflag('decrypt', 'crypt password (hexa), using algo and optional key');
+  cmd.declareflag('encrypt', 'crypt password, using algo and optional key');
 
-  cmd.declareflag('encrypt', 'encrypt a file using public.pem, read from filename');
-  cmd.declareflag('decrypt', 'decrypt a file using private.pem, read from filename');
+  cmd.declareflag('encrypt_pub', 'encrypt a file using public.pem, read from filename');
+  cmd.declareflag('decrypt_priv', 'decrypt a file using private.pem, read from filename');
 
   cmd.declareflag('mkcert', 'make a self sign root cert, read from privatekey (option) & write to filename.crt and filename.key');
   cmd.declareflag('mkreq', 'make a certificate service request, read from privatekey & write to filename.csr filename.key (if privatekey not specified)');
   cmd.declareflag('signreq', 'make a certificate from a csr, read from filename and cert, write to filename.crt');
   //cmd.declareflag('selfsign', 'make a self sign cert, write to cert.crt cert.key');
 
-  cmd.declareflag('set-password', 'set password from a private key,read from privatekey and password (optional) - if no password, will remove the existing password ');
+  cmd.declareflag('set_password', 'set password from a private key,read from privatekey and password (optional) - if no password, will remove the existing password ');
 
   cmd.declareflag('dertopem', 'convert a binary/der private key or cert to base 64 pem format, read from cert or privatekey, write to cert.crt or privatekey.key ');
   cmd.declareflag('pemtoder', 'convert a base 64 pem format to binary/der private key or cert, read from cert or privatekey, write to cert.der or privatekey.der ');
@@ -146,12 +146,24 @@ begin
 
   debug:= cmd.readString('debug')='true';
 
-  if cmd.existsProperty('crypt')=true then
+  if cmd.existsProperty('decrypt')=true then
   begin
     LoadSSL;
     algo:=cmd.readString('algo');
     password:=cmd.readString('password');
-    if crypt(algo,password)=true then writeln('ok') else writeln('not ok');
+    key:=cmd.readString('key');
+    if crypt(algo,password,key,0)=true then writeln('ok') else writeln('not ok');
+    freessl;
+    exit;
+  end;
+
+  if cmd.existsProperty('encrypt')=true then
+  begin
+    LoadSSL;
+    algo:=cmd.readString('algo');
+    password:=cmd.readString('password');
+    key:=cmd.readString('key');
+    if crypt(algo,password,key,1)=true then writeln('ok') else writeln('not ok');
     freessl;
     exit;
   end;
@@ -166,7 +178,7 @@ begin
     exit;
   end;
 
-  if cmd.existsProperty('set-password')=true then
+  if cmd.existsProperty('set_password')=true then
   begin
     LoadSSL;
     privatekey:=cmd.readString('privatekey');
@@ -176,28 +188,28 @@ begin
     exit;
   end;
 
-  if cmd.existsProperty('encrypt')=true then
+  if cmd.existsProperty('encrypt_pub')=true then
   begin
     LoadSSL;
     filename:=cmd.readString('filename');
     hfile_ := CreateFile(pchar(filename), GENERIC_READ , FILE_SHARE_READ or FILE_SHARE_WRITE, nil, OPEN_EXISTING , FILE_ATTRIBUTE_NORMAL, 0);
     if hfile_=thandle(-1) then begin log('invalid handle',1);exit;end;
     ReadFile (hfile_,mem_[0],sizeof(mem_),size_,nil);
-    if size_>0 then EncryptPub (strpas(@mem_[0]),encrypted);
+    if size_>0 then Encrypt_Pub (strpas(@mem_[0]),encrypted);
     writeln(encrypted);
     closehandle(hfile_);
     freessl;
     exit;
   end;
 
-  if cmd.existsProperty('decrypt')=true then
+  if cmd.existsProperty('decrypt_priv')=true then
   begin
     LoadSSL;
     filename:=cmd.readString('filename');
     hfile_ := CreateFile(pchar(filename), GENERIC_READ , FILE_SHARE_READ or FILE_SHARE_WRITE, nil, OPEN_EXISTING , FILE_ATTRIBUTE_NORMAL, 0);
     if hfile_=thandle(-1) then begin log('invalid handle',1);exit;end;
     ReadFile (hfile_,mem_[0],sizeof(mem_),size_,nil);
-    if size_>0 then DecryptPriv(strpas(@mem_[0]));
+    if size_>0 then Decrypt_Priv(strpas(@mem_[0]));
     closehandle(hfile_);
     freessl;
     exit;

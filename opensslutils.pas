@@ -34,11 +34,11 @@ function X509PEM2DER(filename:string):boolean;
 function print_cert(filename:string):boolean;
 function print_private(filename:string;password:string=''):boolean;
 
-function EncryptPub(sometext:string;var encrypted:string):boolean;
-function DecryptPriv(ACryptedData:string):boolean;
+function Encrypt_Pub(sometext:string;var encrypted:string):boolean;
+function Decrypt_Priv(ACryptedData:string):boolean;
 
 function hash(algo,input:string):boolean;
-function crypt(algo,input:string):boolean;
+function crypt(algo,input:string;keystr:string='';enc:integer=1):boolean;
 
 implementation
 
@@ -1239,7 +1239,7 @@ end;
 //RSA_public_encrypt, RSA_private_decrypt - RSA public key cryptography
 //versus
 //RSA_private_encrypt, RSA_public_decrypt - low-level signature operations ... using the private key rsa
-function EncryptPub(sometext:string;var encrypted:string):boolean;
+function Encrypt_Pub(sometext:string;var encrypted:string):boolean;
 var
 	rsa: pRSA; // структура RSA
 	size: Integer;
@@ -1313,7 +1313,7 @@ openssl genrsa 2048 > private2.pem
 -Generate public key from private
 openssl rsa -in private2.pem -pubout > public2.pem
 }
-function DecryptPriv(ACryptedData:string):boolean;
+function Decrypt_Priv(ACryptedData:string):boolean;
 var
   rsa: pRSA=nil;
   out_: AnsiString;
@@ -1485,7 +1485,25 @@ if pkey=nil then
 
 end;
 
-function crypt(algo,input:ansistring):boolean;
+//test...wip
+function hextosomething(str:string):boolean;
+var
+b:pBIGNUM;
+p:pointer;
+len,i:integer;
+begin
+
+  b:=BN_new();
+  len:=BN_hex2bn(b,pchar(str));
+  if len<=0 then exit;
+  getmem(p,len);
+  p:=bn_bn2hex(b);
+  for i:=1 to len do begin write(chr(byte(p^)));inc(p);end;
+  BN_free(b);
+
+end;
+
+function crypt(algo,input:string;keystr:string='';enc:integer=1):boolean;
 const EVP_MAX_MD_SIZE=64;
 const MD5_DIGEST_LENGTH=16;
       //key:array[0..15] of byte=($11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11);
@@ -1500,9 +1518,10 @@ ret,remain:integer;
 //
 //key:array [0..7] of char;
 //iv:array [0..7] of char;
-keystr:array [0..MD5_DIGEST_LENGTH-1] of byte;
-random,key,iv:array of byte;
+digest:array [0..MD5_DIGEST_LENGTH-1] of byte;
+key,iv,encrypted:array of byte;
 begin
+
    result:=false;
 
    log('input:'+input);
@@ -1539,31 +1558,43 @@ begin
    if cipher=nil then exit;
 
    //lets retrieve some cipher details (key and iv length)
-   ret:=EVP_CipherInit_ex(context, cipher, nil, nil, nil,1);
+   ret:=EVP_CipherInit_ex(context, cipher, nil, nil, nil,enc);
    if ret<>1 then raise exception.Create ('EVP_CipherInit_ex failed');
-   writeln('key_length:'+inttostr(EVP_CIPHER_CTX_key_length(context)));
-   writeln('iv_length:'+inttostr(EVP_CIPHER_CTX_iv_length(context)));
-   writeln('block_size:'+inttostr(EVP_CIPHER_block_size(cipher)));
+   log('key_length:'+inttostr(EVP_CIPHER_CTX_key_length(context)));
+   log('iv_length:'+inttostr(EVP_CIPHER_CTX_iv_length(context)));
+   log('block_size:'+inttostr(EVP_CIPHER_block_size(cipher)));
 
-   //lets md5 hash our key (which will give us 16 bytes)
+   //lets md5 hash our key (which will give us 16 bytes so not fit for all algo's)
    //this is optional : all we need is a 16 bytes buffer acting as a key
    //md5 digest in one go thanks to EVP_Digest
    {
    log('EVP_Digest');
-   ret:=EVP_Digest(@key[0],sizeof(key),@keystr,buffer_len,evp_md5,nil);
+   ret:=EVP_Digest(@key[0],sizeof(key),@digest,buffer_len,evp_md5,nil);
    if ret<>1 then raise exception.Create ('EVP_Digest failed');
    //writeln(buffer_len);
    write('key:');
-   for i:=0 to buffer_len -1 do write(inttohex(keystr[i],2));
+   for i:=0 to buffer_len -1 do write(inttohex(digest[i],2));
    writeln;
    }
 
-   //we could also use a random key with size N (rather than digest hash)
+   //a key was supplied
+   if keystr<>'' then
+   begin
+   key:=HexaStringToByte2 (keystr);
+   write('key:');
+   for i:=0 to length(key) -1 do write(inttohex(key[i],2));
+   writeln;
+   end;
+
+   //a key was NOT supplied : use a random key with size N (rather than digest md5 hash)
+   if (EVP_CIPHER_CTX_key_length(context)>0) and (keystr='') then
+   begin
    setlength(key,EVP_CIPHER_CTX_key_length(context));
    RAND_bytes(@key[0],length(key));
    write('key:');
    for i:=0 to length(key) -1 do write(inttohex(key[i],2));
    writeln;
+   end;
 
    //random iv
    if EVP_CIPHER_CTX_iv_length(context)>0 then
@@ -1580,12 +1611,18 @@ begin
    //It should be set to 1 for encryption, 0 for decryption
    log('EVP_CipherInit_ex');
    if pos('_cbc',lowercase(algo))>0
-      then ret:=EVP_CipherInit_ex(context, cipher, nil, @key[0], @iv[0],-1)  //or keystr for hash
+      then ret:=EVP_CipherInit_ex(context, cipher, nil, @key[0], @iv[0],-1)  //or digest for hash
       else ret:=EVP_CipherInit_ex(context, cipher, nil, @key[0], nil,-1); //-1 use the previous value
    if ret<>1 then raise exception.Create ('EVP_CipherInit_ex failed');
 
    log('EVP_CipherUpdate');
-   ret:=EVP_CipherUpdate(context,@buffer[0],@buffer_len,pansichar(input),length(input));
+   if enc=0
+      then
+      begin
+      encrypted:=HexaStringToByte2 (input);
+      ret:=EVP_CipherUpdate(context,@buffer[0],@buffer_len,@encrypted[0],length(encrypted));
+      end
+      else ret:=EVP_CipherUpdate(context,@buffer[0],@buffer_len,pansichar(input),length(input));
    if ret<>1 then raise exception.Create ('EVP_CipherUpdate failed');
    //writeln(buffer_len);
 
@@ -1602,6 +1639,14 @@ begin
    if buffer_len<=0 then exit;
    for i:=0 to buffer_len -1 do write(inttohex(buffer[i],2));
    writeln;
+
+   if enc=0
+      then
+      begin
+      for i:=0 to buffer_len -1 do write(chr(buffer[i]));
+      writeln;
+      end;
+
    result:=true;
 end;
 
