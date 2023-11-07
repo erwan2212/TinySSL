@@ -349,11 +349,13 @@ begin
     begin
     try
     LoadSSL;
+    //in
     cn:=cmd.readString('cn') ;
     if cn='' then cn:='localhost';
+    privatekey:=cmd.readString('privatekey') ;
+    //out
     filename:=cmd.readString('filename');
     if filename='' then filename:='request.csr';
-    privatekey:=cmd.readString('privatekey') ;
     //if privatekey='' then privatekey:='request.key';
     if mkreq(cn,privatekey,filename)=true then writeln('ok') else writeln('not ok');
     finally
@@ -367,10 +369,10 @@ begin
     try
     LoadSSL;
     //in
-    cert:=cmd.readString('cert');
-    if cert='' then cert:='ca.crt';
     filename:=cmd.readString('filename');
     if filename='' then filename:='request.csr';
+    cert:=cmd.readString('cert');
+    if cert='' then cert:='ca.crt';
     password:=cmd.readString('password') ;
     alt:=cmd.readString('alt') ;
     ca:=cmd.readString('ca')='true';
