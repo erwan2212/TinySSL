@@ -98,6 +98,7 @@ begin
 
   if paramcount=0 then
   begin
+    writeln('https://github.com/erwan2212');
     writeln('Usage: tinySSL --help');
     exit;
   end;
