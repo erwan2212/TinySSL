@@ -6,7 +6,7 @@ interface
 
 uses
   windows, SysUtils, classes,
-  libeay32,utils;
+  libeay32,utils,inifiles;
 
 procedure LoadSSL;
 procedure FreeSSL;
@@ -825,6 +825,54 @@ begin
 
 end;
 
+function name_add_entry(section:string;name:px509_name):boolean;
+var
+//
+ini:TIniFile;
+ident:tstrings;
+s:string;
+i:byte;
+begin
+  log('name_add_entry');
+  result:=false;
+  if FileExists ('tinyssl.ini') then
+   begin
+   try
+   ini:=tinifile.Create ('tinyssl.ini');
+   ident:=tstringlist.Create ;
+   ini.ReadSection(section,ident) ;
+   for i:=0 to ident.count-1 do
+       begin
+       s:=ini.ReadString (section,ident[i],'');
+       log('X509_NAME_add_entry_by_txt');
+       X509_NAME_add_entry_by_txt(name, pchar(ident[i]),  MBSTRING_ASC,pchar(s), -1, -1, 0);
+       end;
+   ident.Free ;
+   result:=true;
+   except
+   on e:exception do;
+   end;
+   end; //if FileExists ('tinyssl.ini') then
+end;
+
+function ini_readstring(section,ident:string):string;
+var
+//
+ini:TIniFile;
+begin
+  log('ini_readstring');
+  result:='';
+  if FileExists ('tinyssl.ini') then
+   begin
+   try
+   ini:=tinifile.Create ('tinyssl.ini');
+   result:=ini.ReadString (section,ident,'');
+   except
+   on e:exception do;
+   end;
+   end; //if FileExists ('tinyssl.ini') then
+end;
+
 {
 PEM Format
 Most CAs (Certificate Authority) provide certificates in PEM format in Base64 ASCII encoded files.
@@ -861,6 +909,8 @@ var
     asn1:pASN1_INTEGER =nil;
     p:pBIGNUM=nil;
     ctx:pBN_CTX=nil ;
+    //
+    value:string;
 begin
   log('mkCAcert');
   log('filename:'+filename);
@@ -925,8 +975,10 @@ X509_set_pubkey(x509, pkey);
 //Since this is a self-signed certificate, we set the name of the issuer to the name of the subject
 log('X509_get_subject_name');
 name := X509_get_subject_name(x509);
-//X509_NAME_add_entry_by_txt(name, 'C',  MBSTRING_ASC,pchar('FR'), -1, -1, 0);
-//X509_NAME_add_entry_by_txt(name, 'O',  MBSTRING_ASC,pchar('MyCompany Inc.'), -1, -1, 0);
+//
+name_add_entry('cert',name);
+//
+log('X509_NAME_add_entry_by_txt');
 X509_NAME_add_entry_by_txt(name, 'CN', MBSTRING_ASC,pchar(cn), -1, -1, 0);
 //Now we can actually set the issuer name:
 log('X509_set_issuer_name');
@@ -938,6 +990,8 @@ X509_add1_ext_i2d(x509, NID_basic_constraints,bc,1,0 ); //'critical,CA:TRUE'
 }
 
 if ca=true then add_ext(x509, NID_basic_constraints, 'critical,CA:TRUE');
+value:=ini_readstring('cert','key_usage');
+if value<>'' then add_ext(x509, NID_key_usage, pchar(value));
 //add_ext(x509, NID_key_usage, 'critical,keyCertSign,cRLSign');
 //add_ext(x509, NID_subject_key_identifier, 'hash');
 //add_ext(x509, NID_authority_key_identifier, 'keyid:always,issuer:always');
@@ -1038,6 +1092,9 @@ result:=false;
 
         log('X509_REQ_get_subject_name');
 	name := X509_NAME_new; //X509_REQ_get_subject_name(req);
+        //
+        name_add_entry('req',name);
+        //
         log('X509_NAME_add_entry_by_txt');
 	X509_NAME_add_entry_by_txt(name, 'CN', MBSTRING_ASC,pchar(cn), -1, -1, 0);
         log('X509_REQ_set_subject_name');
