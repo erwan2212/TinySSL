@@ -996,6 +996,7 @@ bc^.ca :=1;
 X509_add1_ext_i2d(x509, NID_basic_constraints,bc,1,0 ); //'critical,CA:TRUE'
 }
 
+//https://www.openssl.org/docs/man1.1.1/man3/X509V3_EXT_d2i.html
 if ca=true then add_ext(x509, NID_basic_constraints, 'critical,CA:TRUE');
 value:=ini_readstring('cert_ext','key_usage');
 if value<>'' then add_ext(x509, NID_key_usage, pchar(value)); //'critical,keyCertSign,cRLSign'
