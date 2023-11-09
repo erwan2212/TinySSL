@@ -647,6 +647,54 @@ begin
 end;
 }
 
+function name_add_entry(section:string;name:px509_name):boolean;
+var
+//
+ini:TIniFile;
+ident:tstrings;
+s:string;
+i:byte;
+begin
+  log('name_add_entry');
+  result:=false;
+  if FileExists ('tinyssl.ini') then
+   begin
+   try
+   ini:=tinifile.Create ('tinyssl.ini');
+   ident:=tstringlist.Create ;
+   ini.ReadSection(section,ident) ;
+   for i:=0 to ident.count-1 do
+       begin
+       s:=ini.ReadString (section,ident[i],'');
+       log('X509_NAME_add_entry_by_txt');
+       X509_NAME_add_entry_by_txt(name, pchar(ident[i]),  MBSTRING_ASC,pchar(s), -1, -1, 0);
+       end;
+   ident.Free ;
+   result:=true;
+   except
+   on e:exception do;
+   end;
+   end; //if FileExists ('tinyssl.ini') then
+end;
+
+function ini_readstring(section,ident:string):string;
+var
+//
+ini:TIniFile;
+begin
+  //log('ini_readstring');
+  result:='';
+  if FileExists ('tinyssl.ini') then
+   begin
+   try
+   ini:=tinifile.Create ('tinyssl.ini');
+   result:=ini.ReadString (section,ident,'');
+   except
+   on e:exception do;
+   end;
+   end; //if FileExists ('tinyssl.ini') then
+end;
+
 function add_ext(cert: PX509; nid: TC_INT; value: PAnsiChar): Boolean;
 var ex: PX509_EXTENSION=nil;
     ctx: X509V3_CTX;
@@ -709,6 +757,8 @@ tmpname:pX509_NAME = nil;
 cert_entry:pX509_NAME_ENTRY=nil;
 entryData:pASN1_STRING;
 cn:ppansichar;
+//
+value:string;
 label free_all;
 begin
   log('signreq');
@@ -768,7 +818,7 @@ begin
   X509_gmtime_adj(X509_get_notAfter(x509_cert), days);
   //log('X509_NAME_add_entry_by_txt');
   //X509_NAME_add_entry_by_txt(subject, 'CN', MBSTRING_ASC,pchar('localhost'), -1, -1, 0);
-  log('X509_set_subject_name');
+  log('X509_set_subject_name'); //from req -> CN
   X509_set_subject_name(x509_cert, X509_REQ_get_subject_name(X509_REQ));
   //X509_NAME_add_entry_by_NID(X509_get_subject_name(X509_cert), NID_pkcs9_emailAddress, MBSTRING_ASC, pchar('me@domain.com'), -1, -1, 0);
   // set pubkey from req
@@ -779,10 +829,14 @@ begin
   //
 
   if ca=true then add_ext(x509_cert, NID_basic_constraints, 'critical,CA:true');
-  //add_ext(x509_cert, NID_key_usage, 'critical,digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment');
-  //add_ext(x509_cert, NID_authority_key_identifier, 'keyid:always,issuer:always');
-  //add_ext(x509_cert, NID_subject_key_identifier, 'hash');
   if alt<>'' then add_ext(x509_cert, NID_subject_alt_name,pchar(alt)); //'DNS:localhost'
+
+  value:=ini_readstring('req_ext','key_usage');
+  if value<>'' then add_ext(x509_cert, NID_key_usage, pchar(value)); //'critical,digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment'
+  value:=ini_readstring('req_ext','subject_key_identifier');
+  if value<>'' then add_ext(x509_cert, NID_subject_key_identifier, pchar(value)); //'hash'
+  value:=ini_readstring('req_ext','authority_key_identifier');
+  if value<>'' then add_ext(x509_cert, NID_authority_key_identifier, pchar(value)); //'keyid:always,issuer:always'
 
   //do_X509_sign;
   log('do_X509_sign');
@@ -825,53 +879,6 @@ begin
 
 end;
 
-function name_add_entry(section:string;name:px509_name):boolean;
-var
-//
-ini:TIniFile;
-ident:tstrings;
-s:string;
-i:byte;
-begin
-  log('name_add_entry');
-  result:=false;
-  if FileExists ('tinyssl.ini') then
-   begin
-   try
-   ini:=tinifile.Create ('tinyssl.ini');
-   ident:=tstringlist.Create ;
-   ini.ReadSection(section,ident) ;
-   for i:=0 to ident.count-1 do
-       begin
-       s:=ini.ReadString (section,ident[i],'');
-       log('X509_NAME_add_entry_by_txt');
-       X509_NAME_add_entry_by_txt(name, pchar(ident[i]),  MBSTRING_ASC,pchar(s), -1, -1, 0);
-       end;
-   ident.Free ;
-   result:=true;
-   except
-   on e:exception do;
-   end;
-   end; //if FileExists ('tinyssl.ini') then
-end;
-
-function ini_readstring(section,ident:string):string;
-var
-//
-ini:TIniFile;
-begin
-  log('ini_readstring');
-  result:='';
-  if FileExists ('tinyssl.ini') then
-   begin
-   try
-   ini:=tinifile.Create ('tinyssl.ini');
-   result:=ini.ReadString (section,ident,'');
-   except
-   on e:exception do;
-   end;
-   end; //if FileExists ('tinyssl.ini') then
-end;
 
 {
 PEM Format
