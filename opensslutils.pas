@@ -990,11 +990,12 @@ X509_add1_ext_i2d(x509, NID_basic_constraints,bc,1,0 ); //'critical,CA:TRUE'
 }
 
 if ca=true then add_ext(x509, NID_basic_constraints, 'critical,CA:TRUE');
-value:=ini_readstring('cert','key_usage');
-if value<>'' then add_ext(x509, NID_key_usage, pchar(value));
-//add_ext(x509, NID_key_usage, 'critical,keyCertSign,cRLSign');
-//add_ext(x509, NID_subject_key_identifier, 'hash');
-//add_ext(x509, NID_authority_key_identifier, 'keyid:always,issuer:always');
+value:=ini_readstring('cert_ext','key_usage');
+if value<>'' then add_ext(x509, NID_key_usage, pchar(value)); //'critical,keyCertSign,cRLSign'
+value:=ini_readstring('cert_ext','subject_key_identifier');
+if value<>'' then add_ext(x509, NID_subject_key_identifier, pchar(value)); //'hash'
+value:=ini_readstring('cert_ext','authority_key_identifier');
+if value<>'' then add_ext(x509, NID_authority_key_identifier, pchar(value)); //'keyid:always,issuer:always'
 
 //And finally we are ready to perform the signing process. We call X509_sign with the key we generated earlier. The code for this is painfully simple:
 log('X509_sign');
