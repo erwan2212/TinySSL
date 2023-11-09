@@ -35,9 +35,9 @@ TinySSL, aka playing with openssl library (libeay32).<br/>
 Example : create a root ca (reusing a previous key), create a csr (reusing a previous key) and generate a certificate (that will work in latest chrome).<br/>
 <br/><br/>
 rem if you want to reuse an existing key and therefore renew instead of recreate<br/>
-tinySSL.exe --mkcert --debug=true --privatekey=ca.key --password=password --filename=ca.crt<br/>
+tinySSL.exe --mkcert --debug=true --privatekey=ca.key --password=password --filename=ca.crt --ca=true<br/>
 rem recreate, not renew<br/>
-rem tinySSL.exe --mkcert --debug=true --filename=ca.crt<br/>
+rem tinySSL.exe --mkcert --debug=true --filename=ca.crt --ca=true<br/>
 rem renew, not recreate<br/>
 tinySSL.exe --mkreq --debug=true --filename=request.csr --privatekey=request.key<br/>
 rem recreate, not renew<br/>
