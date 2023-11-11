@@ -995,7 +995,7 @@ log('X509_set_pubkey');
 X509_set_pubkey(x509, pkey);
 //Since this is a self-signed certificate, we set the name of the issuer to the name of the subject
 log('X509_get_subject_name');
-name := X509_get_subject_name(x509);
+name := X509_NAME_new(); //X509_get_subject_name(x509);
 //
 name_add_entry('cert',name);
 //
