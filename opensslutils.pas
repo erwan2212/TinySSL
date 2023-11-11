@@ -1032,9 +1032,13 @@ name_add_entry('cert',name);
 //
 log('X509_NAME_add_entry_by_txt');
 X509_NAME_add_entry_by_txt(name, 'CN', MBSTRING_ASC,pchar(cn), -1, -1, 0);
+//
+log('X509_set_subject_name');
+ret:=X509_set_subject_name(x509, name);
 //Now we can actually set the issuer name:
 log('X509_set_issuer_name');
 X509_set_issuer_name(x509, name);
+
 {
 bc:=BASIC_CONSTRAINTS_new;
 bc^.ca :=1;
