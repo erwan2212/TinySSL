@@ -141,6 +141,7 @@ const
   NID_authority_key_identifier = 90;
   NID_commonName=                  13;
   NID_pkcs9_emailAddress= 48;
+  NID_ext_key_usage= 126;
 
   V_ASN1_INTEGER = $02;
   V_ASN1_ENUMERATED = 10;

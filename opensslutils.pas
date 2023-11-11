@@ -831,12 +831,26 @@ begin
   if ca=true then add_ext(x509_cert, NID_basic_constraints, 'critical,CA:true');
   if alt<>'' then add_ext(x509_cert, NID_subject_alt_name,pchar(alt)); //'DNS:localhost'
 
+  //rfc 5280 - key_usage
+  {
+           digitalSignature        (0),
+           nonRepudiation          (1), -- recent editions of X.509 have renamed this bit to contentCommitment
+           keyEncipherment         (2),
+           dataEncipherment        (3),
+           keyAgreement            (4),
+           keyCertSign             (5),
+           cRLSign                 (6),
+           encipherOnly            (7),
+           decipherOnly            (8)
+  }
   value:=ini_readstring('req_ext','key_usage');
   if value<>'' then add_ext(x509_cert, NID_key_usage, pchar(value)); //'critical,digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment'
   value:=ini_readstring('req_ext','subject_key_identifier');
   if value<>'' then add_ext(x509_cert, NID_subject_key_identifier, pchar(value)); //'hash'
   value:=ini_readstring('req_ext','authority_key_identifier');
   if value<>'' then add_ext(x509_cert, NID_authority_key_identifier, pchar(value)); //'keyid:always,issuer:always'
+  value:=ini_readstring('req_ext','authority_key_identifier');
+  if value<>'' then add_ext(x509_cert, NID_ext_key_usage, pchar(value)); //'critical, clientAuth, serverAuth'
 
   //do_X509_sign;
   log('do_X509_sign');
