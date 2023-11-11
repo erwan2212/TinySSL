@@ -734,11 +734,44 @@ begin
 	if rv > 0 then result:= 1 else result:= 0;
 end;
 
+function hash_pubkey(x509_cert:pX509):boolean;
+const
+  X509V3_ADD_DEFAULT =0;
+var
+ret:integer = 0;
+rsa:pRSA=nil;
+digest:array[0..63] of byte;
+size,i:cardinal;
+subjectKeyIdentifier:pASN1_OCTET_STRING;
+bin:pointer;
+begin
+       result:=false;
+       rsa:=EVP_PKEY_get1_RSA(X509_get_pubkey (x509_cert));
+       //Writeln('BN_bn2hex E: ', BN_bn2hex(rsa^.e ));
+       bin:=getmem(BN_num_bytes(rsa^.e));
+       BN_bn2bin(rsa^.e,bin);
+       //X509_pubkey_digest(x509, EVP_sha1(), pubkey_hash, &len); // not in openssl 1.x
+       ret:=evp_digest(bin , BN_num_bytes(rsa^.e),@digest[0],size,EVP_sha1(),nil);
+       if ret=1 then
+         begin
+         //write('hash sha1:');
+         //for i:=0 to size -1 do write(inttohex(digest[i],2));
+         //writeln;
+         subjectKeyIdentifier := ASN1_OCTET_STRING_new;
+         ASN1_OCTET_STRING_set(subjectKeyIdentifier, @digest[0], SHA_DIGEST_LENGTH);
+         log('X509_add1_ext_i2d');
+         X509_add1_ext_i2d(x509_cert, NID_subject_key_identifier, subjectKeyIdentifier, 0, X509V3_ADD_DEFAULT);
+         ASN1_OCTET_STRING_free(subjectKeyIdentifier);
+         result:=true;
+         end;
+end;
+
 //the private key of the resulting cert is the request.key
 function signreq(filename:string;cert:string;read_password:string='';alt:string='';ca:boolean=false):boolean;
 const
    LN_commonName=                   'commonName';
    //NID_commonName=                  13;
+   X509V3_ADD_DEFAULT =0;
 var
 ret:integer = 0;
 pkey:PEVP_PKEY=nil;
@@ -759,6 +792,10 @@ entryData:pASN1_STRING;
 cn:ppansichar;
 //
 value:string;
+digest:array[0..63] of byte;
+size,i:cardinal;
+subjectKeyIdentifier:pASN1_OCTET_STRING;
+bin:pointer;
 label free_all;
 begin
   log('signreq');
@@ -832,25 +869,15 @@ begin
   if alt<>'' then add_ext(x509_cert, NID_subject_alt_name,pchar(alt)); //'DNS:localhost'
 
   //rfc 5280 - key_usage
-  {
-           digitalSignature        (0),
-           nonRepudiation          (1), -- recent editions of X.509 have renamed this bit to contentCommitment
-           keyEncipherment         (2),
-           dataEncipherment        (3),
-           keyAgreement            (4),
-           keyCertSign             (5),
-           cRLSign                 (6),
-           encipherOnly            (7),
-           decipherOnly            (8)
-  }
   value:=ini_readstring('req_ext','key_usage');
   if value<>'' then add_ext(x509_cert, NID_key_usage, pchar(value)); //'critical,digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment'
   value:=ini_readstring('req_ext','subject_key_identifier');
-  if value<>'' then add_ext(x509_cert, NID_subject_key_identifier, pchar(value)); //'hash'
-  value:=ini_readstring('req_ext','authority_key_identifier');
-  if value<>'' then add_ext(x509_cert, NID_authority_key_identifier, pchar(value)); //'keyid:always,issuer:always'
-  value:=ini_readstring('req_ext','authority_key_identifier');
-
+  //if value<>'' then add_ext(x509_cert, NID_subject_key_identifier, pchar(value)); //'hash'
+  if value='hash' then hash_pubkey (x509_cert);
+  //not ready, see https://github.com/warmlab/study/blob/master/openssl/x509.c
+  //value:=ini_readstring('req_ext','authority_key_identifier');
+  //if value<>'' then add_ext(x509_cert, NID_authority_key_identifier, pchar(value)); //'keyid:always,issuer:always'
+  value:=ini_readstring('req_ext','ext_key_usage');
   if value<>'' then add_ext(x509_cert, NID_ext_key_usage, pchar(value)); //'critical, clientAuth, serverAuth'
 
   //do_X509_sign;
@@ -976,6 +1003,9 @@ result:=false;
 //OpenSSL uses the X509 structure to represent an x509 certificate in memory
 log('X509_new');
 x509 := X509_new();
+// set version to X509 v3 certificate
+log('X509_set_version');
+X509_set_version(x509,2);
 //Now we need to set a few properties of the certificate
 if serial='' then  ASN1_INTEGER_set (X509_get_serialNumber(x509), i64);
 if serial<>'' then
@@ -995,8 +1025,8 @@ X509_gmtime_adj(X509_get_notAfter(x509), days);
 log('X509_set_pubkey');
 X509_set_pubkey(x509, pkey);
 //Since this is a self-signed certificate, we set the name of the issuer to the name of the subject
-log('X509_get_subject_name');
-name := X509_get_subject_name(x509);
+log('X509_NAME_new');
+name := X509_NAME_new ; //X509_get_subject_name(x509);
 //
 name_add_entry('cert',name);
 //
@@ -1016,9 +1046,12 @@ if ca=true then add_ext(x509, NID_basic_constraints, 'critical,CA:TRUE');
 value:=ini_readstring('cert_ext','key_usage');
 if value<>'' then add_ext(x509, NID_key_usage, pchar(value)); //'critical,keyCertSign,cRLSign'
 value:=ini_readstring('cert_ext','subject_key_identifier');
-if value<>'' then add_ext(x509, NID_subject_key_identifier, pchar(value)); //'hash'
-value:=ini_readstring('cert_ext','authority_key_identifier');
-if value<>'' then add_ext(x509, NID_authority_key_identifier, pchar(value)); //'keyid:always,issuer:always'
+//if value<>'' then add_ext(x509, NID_subject_key_identifier, pchar(value)); //'hash'
+if value='hash' then hash_pubkey (x509);
+//value:=ini_readstring('cert_ext','authority_key_identifier');
+//if value<>'' then add_ext(x509, NID_authority_key_identifier, pchar(value)); //'keyid:always,issuer:always'
+value:=ini_readstring('cert_ext','ext_key_usage');
+if value<>'' then add_ext(x509, NID_ext_key_usage, pchar(value)); //'critical, clientAuth, serverAuth'
 
 //And finally we are ready to perform the signing process. We call X509_sign with the key we generated earlier. The code for this is painfully simple:
 log('X509_sign');
@@ -1111,10 +1144,10 @@ result:=false;
 	if req=nil then exit;
 
         //
-	X509_REQ_set_version(req, 0);
+	X509_REQ_set_version(req, 0); //v1 ?
 	X509_REQ_set_pubkey(req, key);
 
-        log('X509_REQ_get_subject_name');
+        log('X509_NAME_new');
 	name := X509_NAME_new; //X509_REQ_get_subject_name(req);
         //
         name_add_entry('req',name);
@@ -1477,6 +1510,9 @@ function print_private(filename:string;password:string=''):boolean;
 var
    rsa:pRSA=nil;
    pkey:pEVP_PKEY ;
+   bin:pointer;
+   size,i:cardinal;
+   digest:array [0..EVP_MAX_MD_SIZE-1] of byte;
 begin
   result:=false;
   //rsa:=RSAOpenSSLPrivateKey (filename,password); //password will be prompted
@@ -1485,6 +1521,16 @@ begin
   //try if rsa<>nil then Writeln('BN_bn2hex N: ', strpas(BN_bn2hex(rsa^.n )));except end;
   //try if rsa<>nil then Writeln('BN_bn2hex D: ', strpas(BN_bn2hex(rsa^.d  )));except end; //exponent
   try if rsa<>nil then Writeln('BN_bn2hex E: ', BN_bn2hex(rsa^.e ));except end;
+  //
+  bin:=getmem(BN_num_bytes(rsa^.e));
+  BN_bn2bin(rsa^.e,bin);
+  if evp_digest(bin , BN_num_bytes(rsa^.e),@digest[0],size,EVP_sha1(),nil)=1 then
+     begin
+     write('hash sha1:');
+     for i:=0 to size -1 do write(inttohex(digest[i],2));
+     writeln;
+     end;
+
   //try if rsa<>nil then Writeln('BN_bn2hex P: ', strpas(BN_bn2hex(rsa^.p   )));except end;
   //try if rsa<>nil then Writeln('BN_bn2hex Q: ', strpas(BN_bn2hex(rsa^.q   )));except end;
    result:=true;
@@ -1501,6 +1547,10 @@ var
     n:integer=0;
     x509:pX509 ;
     key:pEVP_PKEY ;
+    digest:array [0..EVP_MAX_MD_SIZE-1] of byte;
+    size,i:cardinal;
+    context:PEVP_MD_CTX;
+    bin:pointer;
 begin
   result:=false;
   //rsa:=RSAOpenSSLCert(filename);
@@ -1511,6 +1561,24 @@ begin
   //try if rsa<>nil then Writeln('BN_bn2hex D: ', strpas(BN_bn2hex(rsa^.d  )));except end; //exponent
   //n := BN_num_bytes(rsa^.e); writeln(inttostr(n)+' bytes');
   try if rsa<>nil then Writeln('BN_bn2hex E: ', BN_bn2hex(rsa^.e ));except end;
+  //
+  bin:=getmem(BN_num_bytes(rsa^.e));
+  BN_bn2bin(rsa^.e,bin);
+  {
+  size:=0;
+  context := EVP_MD_CTX_create();
+  EVP_DigestInit(context,EVP_sha1());
+  EVP_DigestUpdate(context, bin, BN_num_bytes(rsa^.e));
+  EVP_DigestFinal(context, @digest[0], size);
+  EVP_MD_CTX_destroy (context);
+  }
+  //
+  if evp_digest(bin , BN_num_bytes(rsa^.e),@digest[0],size,EVP_sha1(),nil)=1 then
+     begin
+     write('hash sha1:');
+     for i:=0 to size -1 do write(inttohex(digest[i],2));
+     writeln;
+     end;
   //try if rsa<>nil then Writeln('BN_bn2hex P: ', strpas(BN_bn2hex(rsa^.p   )));except end;
   //try if rsa<>nil then Writeln('BN_bn2hex Q: ', strpas(BN_bn2hex(rsa^.q   )));except end;
 

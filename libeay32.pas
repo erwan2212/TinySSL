@@ -1181,6 +1181,10 @@ function PKCS12_create(pass:pchar;name:pchar; pkey:pEVP_PKEY; cert:pX509;
 //
 function ASN1_INTEGER_set(a: PASN1_INTEGER; v: integer): integer; cdecl;
 function ASN1_INTEGER_set_uint64(a:pASN1_INTEGER;r:uint64):integer; cdecl;
+function ASN1_OCTET_STRING_set (x:PASN1_OCTET_STRING;d:pchar; len:integer):integer; cdecl;
+//function ASN1_STRING_new():PASN1_STRING ; cdecl;
+function ASN1_OCTET_STRING_new():PASN1_OCTET_STRING ; cdecl;
+procedure ASN1_OCTET_STRING_free(x:PASN1_OCTET_STRING); cdecl;
 
 // Internal to ASN.1 and ASN.1 to internal conversion functions
 function i2a_ASN1_INTEGER(bp: pBIO; a: pASN1_INTEGER): integer; cdecl;
@@ -1953,6 +1957,10 @@ function PKCS12_create; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$EN
 
 function ASN1_INTEGER_set; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 function ASN1_INTEGER_set_uint64; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
+function ASN1_OCTET_STRING_set ;external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
+//function ASN1_STRING_new;external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
+function ASN1_OCTET_STRING_new;external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
+procedure ASN1_OCTET_STRING_free;external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 
 function i2a_ASN1_INTEGER; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 function a2i_ASN1_INTEGER; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
