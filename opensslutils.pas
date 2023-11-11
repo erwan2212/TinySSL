@@ -850,6 +850,7 @@ begin
   value:=ini_readstring('req_ext','authority_key_identifier');
   if value<>'' then add_ext(x509_cert, NID_authority_key_identifier, pchar(value)); //'keyid:always,issuer:always'
   value:=ini_readstring('req_ext','authority_key_identifier');
+
   if value<>'' then add_ext(x509_cert, NID_ext_key_usage, pchar(value)); //'critical, clientAuth, serverAuth'
 
   //do_X509_sign;
@@ -995,7 +996,7 @@ log('X509_set_pubkey');
 X509_set_pubkey(x509, pkey);
 //Since this is a self-signed certificate, we set the name of the issuer to the name of the subject
 log('X509_get_subject_name');
-name := X509_NAME_new(); //X509_get_subject_name(x509);
+name := X509_get_subject_name(x509);
 //
 name_add_entry('cert',name);
 //
