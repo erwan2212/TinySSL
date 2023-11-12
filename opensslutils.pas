@@ -1540,6 +1540,14 @@ begin
    result:=true;
 end;
 
+function getDN(pDn: pX509_NAME): String;
+var
+  buffer: array [0..1023] of char;
+begin
+X509_NAME_oneline(pDn, @buffer, SizeOf(buffer));
+result := StrPas(@buffer);
+end;
+
 //openssl x509 -noout -text -in ca.crt
 function print_cert(filename:string):boolean;
 var
@@ -1547,7 +1555,7 @@ var
     //
     ctx:pBN_CTX;
     p:pBIGNUM;
-    bp:pBIO;
+    bp:pBIO=nil;
     n:integer=0;
     x509:pX509 ;
     key:pEVP_PKEY ;
@@ -1555,16 +1563,37 @@ var
     size,i:cardinal;
     context:PEVP_MD_CTX;
     bin:pointer;
+    name:pX509_NAME=nil;
+    usage:PASN1_STRING;
 begin
   result:=false;
   //rsa:=RSAOpenSSLCert(filename);
-  key:=LoadCertPublicKey(filename);
+
+  bp := BIO_new_file(pchar(filename), 'r+');
+  log('PEM_read_bio_X509_REQ');
+  X509 := PEM_read_bio_X509(bp, nil, nil, nil);
+  BIO_free(bp);
+  //
+  log('X509_get_subject_name');
+  NAME:=X509_get_subject_name(x509);
+  writeln('subject_name:'+getdn(name));
+  //
+  //
+  log('X509_get_issuer_name');
+  NAME:=X509_get_issuer_name(x509);
+  writeln('issuer_name:'+getdn(name));
+  //
+
+  log('X509_get_pubkey');
+  key:=X509_get_pubkey (x509);
+
+  //key:=LoadCertPublicKey(filename);
   rsa:=EVP_PKEY_get1_RSA(key);
 
   //try if rsa<>nil then Writeln('BN_bn2hex N: ', strpas(BN_bn2hex(rsa^.n )));except end;
   //try if rsa<>nil then Writeln('BN_bn2hex D: ', strpas(BN_bn2hex(rsa^.d  )));except end; //exponent
   //n := BN_num_bytes(rsa^.e); writeln(inttostr(n)+' bytes');
-  try if rsa<>nil then Writeln('BN_bn2hex E: ', BN_bn2hex(rsa^.e ));except end;
+  try if rsa<>nil then Writeln('Modulo: ', BN_bn2hex(rsa^.e ));except end;
   //
   bin:=getmem(BN_num_bytes(rsa^.e));
   BN_bn2bin(rsa^.e,bin);
@@ -1585,6 +1614,16 @@ begin
      end;
   //try if rsa<>nil then Writeln('BN_bn2hex P: ', strpas(BN_bn2hex(rsa^.p   )));except end;
   //try if rsa<>nil then Writeln('BN_bn2hex Q: ', strpas(BN_bn2hex(rsa^.q   )));except end;
+
+  writeln('key_usage:');
+  usage := X509_get_ext_d2i(x509, NID_key_usage, nil, nil);
+  if (byte(usage^.data^) and $80)=$80 then writeln('digitalSignature');
+  if (byte(usage^.data^) and $40)=$40 then writeln('nonrepudiation ');
+  if (byte(usage^.data^) and $20)=$20 then writeln('keyEncipherment ');
+  if (byte(usage^.data^) and $10)=$10 then writeln('dataEncipherment');
+  if (byte(usage^.data^) and $08)=$08 then writeln('keyAgreement');
+  if (byte(usage^.data^) and $04)=$04 then writeln('keyCertSign');
+  if (byte(usage^.data^) and $02)=$02 then writeln('cRLSign');
 
   {
   bp := BIO_new_file(pchar(filename), 'r+');

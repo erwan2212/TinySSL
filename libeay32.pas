@@ -1370,8 +1370,7 @@ function X509_verify_cert_error_string(n: longint): PCharacter; cdecl;
 procedure X509_email_free(sk: pSTACK); cdecl;
 function X509_get_ext(x: pX509; loc: integer): pX509_EXTENSION; cdecl;
 function X509_get_ext_by_NID(x: pX509; nid, lastpos: integer): integer; cdecl;
-function X509_get_ext_d2i(x: pX509; nid: integer; var crit,
-    idx: integer): pointer; cdecl;
+function X509_get_ext_d2i(x: pX509; nid: integer;  crit, idx: pinteger): pointer; cdecl;
 function X509V3_EXT_d2i(ext: pX509_EXTENSION): pointer; cdecl;
 function X509V3_EXT_i2d(ext_nid: integer; crit: integer; ext_struc: pointer):
     pX509_EXTENSION; cdecl;
