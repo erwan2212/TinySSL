@@ -1704,6 +1704,11 @@ begin
   if (byte(usage^.data^) and $04)=$04 then writeln('keyCertSign');
   if (byte(usage^.data^) and $02)=$02 then writeln('cRLSign');
 
+  {
+  //todo
+  usage:=X509_get_ext_d2i(x509, NID_ext_key_usage,nil, nil);
+  }
+
   try
   log('X509_get_notBefore');
   writeln('notBefore:'+DateTimeToStr (getTime (X509_get_notBefore(x509))));
