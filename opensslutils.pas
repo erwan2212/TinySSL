@@ -5,7 +5,7 @@ unit OpenSSLUtils;
 interface
 
 uses
-  windows, SysUtils, classes,
+  windows, SysUtils, classes,dateutils,
   libeay32,utils,inifiles;
 
 procedure LoadSSL;
@@ -1548,6 +1548,85 @@ X509_NAME_oneline(pDn, @buffer, SizeOf(buffer));
 result := StrPas(@buffer);
 end;
 
+// Extract a ASN1 time
+
+function getTime(asn1_time: pASN1_TIME): TDateTime;
+var
+  buffer: array [0..31] of char;
+  tz, Y, M, D, h, n, s: integer;
+//  tmpbio: pBIO;
+  function Char2Int(d, u: char): integer;
+  begin
+  if (d < '0') or (d > '9') or (u < '0') or (u > '9') then
+    raise exception.Create('Invalid ASN1 date format (invalid char).');
+  result := (Ord(d) - Ord('0'))*10 + Ord(u) - Ord('0');
+  end;
+begin
+{
+i2d_ASN1_TIME(asn1_time, @buffer2);
+if buffer='' then
+  result := time
+else
+  result := 0;
+}
+
+if (asn1_time^.asn1_type <> V_ASN1_UTCTIME)
+    and (asn1_time^.asn1_type <> V_ASN1_GENERALIZEDTIME) then
+  raise exception.Create('Invalid ASN1 date format.');
+
+tz := 0;
+s := 0;
+
+StrLCopy(@buffer, asn1_time^.data, asn1_time^.length);
+
+if asn1_time^.asn1_type = V_ASN1_UTCTIME then
+  begin
+  if asn1_time^.length < 10 then
+    raise exception.Create('Invalid ASN1 UTC date format (too short).');
+	Y := Char2Int(buffer[0], buffer[1]);
+    if Y < 50 then
+      Y := Y + 100;
+    Y := Y + 1900;
+    M := Char2Int(buffer[2], buffer[3]);
+    D := Char2Int(buffer[4], buffer[5]);
+    h := Char2Int(buffer[6], buffer[7]);
+    n := Char2Int(buffer[8], buffer[9]);
+    if (buffer[10] >= '0') and (buffer[10] <= '9')
+        and (buffer[11] >= '0') and (buffer[11] <= '9') then
+      s := Char2Int(buffer[10], buffer[11]);
+    if buffer[asn1_time^.length-1] = 'Z' then
+      tz := 1;
+  end
+else if asn1_time^.asn1_type = V_ASN1_GENERALIZEDTIME then
+  begin
+  if asn1_time^.length < 12 then
+    raise exception.Create('Invalid ASN1 generic date format (too short).');
+    Y := Char2Int(buffer[0], buffer[1])*100 + Char2Int(buffer[2], buffer[3]);;
+    M := Char2Int(buffer[4], buffer[5]);
+    D := Char2Int(buffer[6], buffer[7]);
+    h := Char2Int(buffer[8], buffer[9]);
+    n := Char2Int(buffer[10], buffer[11]);
+    if (buffer[12] >= '0') and (buffer[12] <= '9')
+        and (buffer[13] >= '0') and (buffer[13] <= '9') then
+      s := Char2Int(buffer[12], buffer[13]);
+    if buffer[asn1_time^.length-1] = 'Z' then
+      tz := 1;
+  end;
+if tz > 0 then
+  result := IncHour(EncodeDateTime(Y, M, D, h+tz, n, s, 0), tz)
+else
+  result := EncodeDateTime(Y, M, D, h, n, s, 0);
+{tmpbio := BIO_new(BIO_s_mem());
+ASN1_TIME_print(tmpbio, asn1_time);
+BIO_read(tmpbio, @buffer, SizeOf(buffer));
+BIO_free_all(tmpbio);
+if buffer = '' then
+  result := time
+else
+  result := time}
+end;
+
+
 //openssl x509 -noout -text -in ca.crt
 function print_cert(filename:string):boolean;
 var
@@ -1625,6 +1704,15 @@ begin
   if (byte(usage^.data^) and $04)=$04 then writeln('keyCertSign');
   if (byte(usage^.data^) and $02)=$02 then writeln('cRLSign');
 
+  try
+  log('X509_get_notBefore');
+  writeln('notBefore:'+DateTimeToStr (getTime (X509_get_notBefore(x509))));
+  log('X509_get_notAfter');
+  writeln('notAfter:'+DateTimeToStr (getTime (X509_get_notAfter (x509))));
+  except
+  on e:exception do writeln(e.message);
+  end;
+
   {
   bp := BIO_new_file(pchar(filename), 'r+');
   log('PEM_read_bio_X509');
@@ -1632,6 +1720,7 @@ begin
   key:=X509_get_pubkey(x509);
   BIO_free(bp);
   }
+
 
   //or
   {
