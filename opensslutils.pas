@@ -954,7 +954,7 @@ var
     days:long = 5 * 365 * 24 * 3600; // 5 years
     //
     bc:pBASIC_CONSTRAINTS;
-    i64:int64=1;
+    iserial:integer=1;
     asn1:pASN1_INTEGER =nil;
     p:pBIGNUM=nil;
     ctx:pBN_CTX=nil ;
@@ -1007,7 +1007,7 @@ x509 := X509_new();
 log('X509_set_version');
 X509_set_version(x509,2);
 //Now we need to set a few properties of the certificate
-if serial='' then  ASN1_INTEGER_set (X509_get_serialNumber(x509), i64);
+if serial='' then  ASN1_INTEGER_set (X509_get_serialNumber(x509), iserial);
 if serial<>'' then
 begin
 ctx := BN_CTX_new();
