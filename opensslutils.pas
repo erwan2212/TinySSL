@@ -40,6 +40,9 @@ function Decrypt_Priv(ACryptedData:string):boolean;
 function hash(algo,input:string):boolean;
 function crypt(algo,input:string;keystr:string='';enc:integer=1):boolean;
 
+function getDN(pDn: pX509_NAME): String;
+function getTime(asn1_time: pASN1_TIME): TDateTime;
+
 implementation
 
 type

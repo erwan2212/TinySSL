@@ -14,7 +14,8 @@ uses
   libeay32,
   rcmdline in '..\rcmdline-master\rcmdline.pas',
   opensslutils,
-  utils;
+  utils,
+  ssleay32;
 
 //https://learn.microsoft.com/en-us/windows/win32/api/wincrypt/ns-wincrypt-publickeystruc
 type
@@ -49,6 +50,10 @@ var
   hfile_:thandle=thandle(-1);
   mem_:array[0..8192-1] of char;
   size_:dword=0;
+
+
+
+
 
 //load a decrypted rsa key, no header
 procedure loadrsa(filename:string);
@@ -94,7 +99,9 @@ end;
 begin
   //loadrsa('decoded.bin');
   //exit;
-  debug:=true;
+  //debug:=true;
+
+
 
   if paramcount=0 then
   begin
@@ -117,6 +124,8 @@ begin
   cmd.declareString('debug', 'true|false','false');
   cmd.declareString('filename', 'local filename');
 
+  //
+  cmd.declareflag('s_client', 'will retrieve ssl information from remote host, cn=host');
   //
   cmd.declareflag('print_cert', 'print cert details from cert');
   cmd.declareflag('print_private', 'print cert details from privatekey');
@@ -146,6 +155,14 @@ begin
   cmd.parse(cmdline);
 
   debug:= cmd.readString('debug')='true';
+
+  if cmd.existsProperty('s_client')=true then
+     begin
+     cn:=cmd.readString('cn') ;
+     if cn='' then exit;
+     s_client(cn) ;
+     exit;
+     end;
 
   if cmd.existsProperty('decrypt')=true then
   begin
