@@ -42,6 +42,7 @@ function crypt(algo,input:string;keystr:string='';enc:integer=1):boolean;
 
 function getDN(pDn: pX509_NAME): String;
 function getTime(asn1_time: pASN1_TIME): TDateTime;
+function getSerialNumber(x509:px509): String;
 
 implementation
 
@@ -1541,6 +1542,19 @@ begin
   //try if rsa<>nil then Writeln('BN_bn2hex P: ', strpas(BN_bn2hex(rsa^.p   )));except end;
   //try if rsa<>nil then Writeln('BN_bn2hex Q: ', strpas(BN_bn2hex(rsa^.q   )));except end;
    result:=true;
+end;
+
+function getSerialNumber(x509:px509): String;
+var
+   Buffer : array [0..31] of char;
+   v: pASN1_OCTET_STRING ;
+   b:byte;
+begin
+  result:='';
+   v := X509_get_serialNumber(x509);
+   //StrLCopy(pansichar(@buffer), v^.data, v^.length);
+   for b:=0 to v^.length-1 do result:=result+inttohex(pbyte(v^.data)[b],2); //to be checked
+   //Result:=Buffer;
 end;
 
 function getDN(pDn: pX509_NAME): String;

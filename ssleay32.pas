@@ -18,6 +18,7 @@ var
  SSL_set_fd:function(ssl:pointer;fd:integer):integer;cdecl=nil;
  SSL_connect:function(ssl: pointer):integer;cdecl=nil;
  SSL_get_peer_certificate:function(const ssl:pointer):px509;cdecl=nil;
+ SSL_get_peer_cert_chain:function(const ssl:pointer):pSTACK_OFX509;cdecl=nil;
  SSL_shutdown:function(ssl: pointer):integer;cdecl=nil;
  SSL_free:procedure(ssl: pointer);cdecl=nil;
  SSL_library_init:function():integer;cdecl=nil;
@@ -69,6 +70,8 @@ ctx:pointer=nil;
 server_cert:PX509=nil;
 str:pchar;
 name:pX509_NAME=nil;
+certs:pSTACK_OFX509 =nil;
+b:byte;
 begin
 
    log('SSL_library_init');
@@ -97,7 +100,14 @@ begin
    //writeln ('SSL connection using ' + SSL_get_cipher (ssl));
 
    log('SSL_get_peer_certificate');
-   server_cert := SSL_get_peer_certificate (ssl);
+   //server_cert := SSL_get_peer_certificate (ssl);
+   certs:=SSL_get_peer_cert_chain (ssl);
+   writeln('sk_num:'+inttostr(sk_num(Certs)));
+
+   writeln('********************************');
+   for b:=0 to sk_num(Certs) -1 do
+   begin
+   server_cert:=sk_value(Certs, b);
 
    //
      log('X509_get_subject_name');
@@ -118,6 +128,12 @@ begin
        except
        on e:exception do writeln(e.message);
        end;
+
+       writeln('SerialNumber:'+getSerialNumber(server_cert));
+
+       writeln('********************************');
+    end;   //for b:=0 to sk_num(Certs) -1 do
+
 
      SSL_shutdown (ssl);
      SSL_free (ssl);
@@ -150,6 +166,7 @@ function initAPI:boolean;
  SSL_set_fd:=GetProcAddress(lib,'SSL_set_fd');
  SSL_connect:=GetProcAddress(lib,'SSL_connect');
  SSL_get_peer_certificate:=GetProcAddress(lib,'SSL_get_peer_certificate');
+ SSL_get_peer_cert_chain:=GetProcAddress(lib,'SSL_get_peer_cert_chain');
  SSL_shutdown:=GetProcAddress(lib,'SSL_shutdown');
  SSL_free:=GetProcAddress(lib,'SSL_free');
  SSL_library_init:=GetProcAddress(lib,'SSL_library_init');
