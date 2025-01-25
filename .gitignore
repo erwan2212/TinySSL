@@ -3,7 +3,10 @@ backup
 *.bak
 *.crt
 *.key
+*.csr
 *.pfx
+*.p7b
+*.der
 *.o
 *.a
 *.compiled
