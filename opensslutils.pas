@@ -51,6 +51,10 @@ ReadKeyChar = AnsiChar;
 //ReadKeyChar = Byte;
 PReadKeyChar = ^ReadKeyChar;
 
+//OpenSSL_add_all_algorithms() is not needed for newer OpenSSL versions and is ignored
+//The same applies to OpenSSL_add_all_ciphers() and OpenSSL_add_all_digests()
+//This is not entirely accurate (at least not any more). OpenSSL_add_all_algorithms is not ignored, it is simply a macro wrapping a call to OPENSSL_init_crypto, 
+//see for example github.com/openssl/openssl/blob/…
 procedure LoadSSL;
 begin
   OpenSSL_add_all_algorithms;
@@ -290,67 +294,6 @@ begin
   end;
 end;
 
-function PEM2PFX(export_pwd,privatekey,cert:string):boolean;
-var
-  err_reason:integer;
-  bp:pBIO=nil;
-  p12_cert:pPKCS12 = nil;
-  pkey:pEVP_PKEY = nil;
-  x509_cert:pX509 = nil;
-  additional_certs:pSTACK_OFX509 = nil;
-begin
-  result:=false;
-  log('Convert2PKCS12');
-  log('cert:'+cert);
-  log('privatekey:'+privatekey);
-  bp := BIO_new_file(pchar(privatekey), 'r+');
-  log('PEM_read_bio_PrivateKey');
-  //password will be prompted
-  pkey:=PEM_read_bio_PrivateKey(bp,nil,nil,nil);
-  BIO_free(bp);
-  if pkey=nil then
-     begin
-     writeln('PEM_read_bio_PrivateKey failed');
-     exit;
-     end;
-
-  bp := BIO_new_file(pchar(cert), 'r+');
-  log('PEM_read_bio_X509');
-  x509_cert:=PEM_read_bio_X509(bp,nil,nil,nil);
-  BIO_free(bp);
-  if x509_cert=nil then
-     begin
-     writeln('PEM_read_bio_X509 failed');
-     exit;
-     end;
-
-  log('PKCS12_new');
-  p12_cert := PKCS12_new();
-  if p12_cert=nil then exit;
-
-
-  log('PKCS12_create');
-  p12_cert := PKCS12_create(pchar(export_pwd), nil, pkey, x509_cert, nil, 0, 0, 0, 0, 0);
-  if p12_cert = nil then
-     begin
-     writeln('PKCS12_create failed, '+inttohex(ERR_peek_error,8));
-     //(SSL: error:0B080074:x509 certificate routines: X509_check_private_key:key values mismatch)
-     exit;
-     end;
-
-  log('i2d_PKCS12_bio');
-  bp := BIO_new_file(pchar(GetCurrentDir+'\'+changefileext(cert,'.pfx')), 'w+');
-  err_reason:=i2d_PKCS12_bio(bp, p12_cert);
-  BIO_free(bp);
-
-
-  if x509_cert<>nil then X509_free(x509_cert); x509_cert := nil;
-  if pkey<>nil then EVP_PKEY_free(pkey); pkey := nil;
-  ERR_clear_error();
-  PKCS12_free(p12_cert);
-  result:=err_reason<>0;
-end;
-
 function PEM2P7B(filename:string):boolean;
 var
 p7: pPKCS7=nil;
@@ -474,6 +417,75 @@ begin
   result:=true;
 end;
 
+function PEM2PFX(export_pwd,privatekey,cert:string):boolean;
+var
+  err_reason:integer;
+  bp:pBIO=nil;
+  p12_cert:pPKCS12 = nil;
+  pkey:pEVP_PKEY = nil;
+  x509_cert:pX509 = nil;
+  certs:pSTACK_OFX509 = nil;
+begin
+  result:=false;
+  log('Convert2PKCS12');
+  log('cert:'+cert);
+  log('privatekey:'+privatekey);
+  bp := BIO_new_file(pchar(privatekey), 'r+');
+  log('PEM_read_bio_PrivateKey');
+  //password will be prompted
+  pkey:=PEM_read_bio_PrivateKey(bp,nil,nil,nil);
+  BIO_free(bp);
+  if pkey=nil then
+     begin
+     writeln('PEM_read_bio_PrivateKey failed');
+     exit;
+     end;
+
+  bp := BIO_new_file(pchar(cert), 'r+');
+  log('PEM_read_bio_X509');
+  //x509_cert:=PEM_read_bio_X509(bp,nil,nil,nil);
+  certs := sk_new_null();
+    while 1=1 do
+    begin
+         x509_cert := PEM_read_bio_X509(bp, nil, nil, nil);
+         if x509_cert =nil then break;
+         sk_push(certs, x509_cert);
+    end;
+  BIO_free(bp);
+  x509_cert :=sk_value(certs,0);
+  if x509_cert=nil then
+     begin
+     writeln('PEM_read_bio_X509 failed');
+     exit;
+     end;
+
+  log('PKCS12_new');
+  p12_cert := PKCS12_new();
+  if p12_cert=nil then exit;
+
+
+  log('PKCS12_create');
+  p12_cert := PKCS12_create(pchar(export_pwd), nil, pkey, nil, certs, 0, 0, 0, 0, 0);
+  if p12_cert = nil then
+     begin
+     writeln('PKCS12_create failed, '+inttohex(ERR_peek_error,8));
+     //(SSL: error:0B080074:x509 certificate routines: X509_check_private_key:key values mismatch)
+     exit;
+     end;
+
+  log('i2d_PKCS12_bio');
+  bp := BIO_new_file(pchar(GetCurrentDir+'\'+changefileext(cert,'.pfx')), 'w+');
+  err_reason:=i2d_PKCS12_bio(bp, p12_cert);
+  BIO_free(bp);
+
+
+  if x509_cert<>nil then X509_free(x509_cert); x509_cert := nil;
+  if pkey<>nil then EVP_PKEY_free(pkey); pkey := nil;
+  ERR_clear_error();
+  PKCS12_free(p12_cert);
+  result:=err_reason<>0;
+end;
+
 function X509PEM2DER(filename:string):boolean;
 var
 x509_cert:pX509=nil;
@@ -500,31 +512,6 @@ log('filename:'+filename);
   BIO_free(bp);
 
 end;
-
-function PVTPEM2DER(filename:string):boolean;
-var
-p:pEVP_PKEY =nil;
-bp:pBIO;
-begin
-result:=false;
-
-log('PVTPEM2DER');
-log('filename:'+filename);
-
-p:=LoadPrivateKey(filename);
-  if p=nil then
-     begin
-     writeln('LoadPrivateKey failed');
-     exit;
-     end;
-
-  bp := BIO_new_file(pchar(GetCurrentDir+'\'+changefileext(filename,'.der')), 'w+');
-  result:= i2d_PrivateKey_bio  (bp,p )<>-1;
-  if result=false then writeln('i2d_X509_bio failed');
-  BIO_free(bp);
-
-end;
-
 
 function X509DER2PEM(filename:string):boolean;
 var
@@ -587,6 +574,30 @@ begin
   BIO_free(bp);
   //
   result:=true;
+end;
+
+function PVTPEM2DER(filename:string):boolean;
+var
+p:pEVP_PKEY =nil;
+bp:pBIO;
+begin
+result:=false;
+
+log('PVTPEM2DER');
+log('filename:'+filename);
+
+p:=LoadPrivateKey(filename);
+  if p=nil then
+     begin
+     writeln('LoadPrivateKey failed');
+     exit;
+     end;
+
+  bp := BIO_new_file(pchar(GetCurrentDir+'\'+changefileext(filename,'.der')), 'w+');
+  result:= i2d_PrivateKey_bio  (bp,p )<>-1;
+  if result=false then writeln('i2d_X509_bio failed');
+  BIO_free(bp);
+
 end;
 
 {
@@ -1298,6 +1309,7 @@ ret:integer; //= 0;
 rsa:pRSA;//				 = nil;
 bne:pBIGNUM;// = nil;
 bp_public:pBIO;// = nil;
+bp_public2:pbio;
 bp_private:pBIO;// = nil;
 
 bits:integer; // = 2048;
@@ -1332,13 +1344,22 @@ begin
         ret:=EVP_PKEY_set1_RSA (pkey,rsa);
         if ret <> 1 then goto free_all;
 
-        // 2. save public key
+        // 2. save public key to pem
 	bp_public := BIO_new_file(pchar(GetCurrentDir+'\public.pem'), 'w+');
         log('2. save public key OK');
         ret:=PEM_write_bio_PUBKEY (bp_public ,pkey);
 	if ret <>1 then goto free_all;
 
+        // 2.1 save public key to rsa -> creates the same file as above ...
+	{
+        bp_public2 := BIO_new_file(pchar(GetCurrentDir+'\public_rsa.pub'), 'w+');
+        log('2.1 save public key OK');
+        ret:=PEM_write_bio_RSA_PUBKEY (bp_public2 ,rsa);
+	if ret <>1 then goto free_all;
+        }
+
 	// 3. save private key
+        //check PEM_write_bio_RSAPrivateKey ?
 	bp_private := BIO_new_file(pchar(GetCurrentDir+'\private.pem'), 'w+');
         //the private key will have no password
         log('3. save private key');
@@ -1349,6 +1370,7 @@ begin
 free_all:
         log('free_all');
 	BIO_free_all(bp_public);
+    //BIO_free_all(bp_public2);
 	BIO_free_all(bp_private);
 	RSA_free(rsa);
 	BN_free(bne);
@@ -1405,6 +1427,7 @@ begin
           log(inttostr(len));
 	  // полученный бинарный буфер преобразуем в человекоподобный base64
 		b64 := BIO_new(BIO_f_base64); // BIO типа base64
+                BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
 		mem := BIO_push(b64, BIO_new(BIO_s_mem)); // Stream
 		try
 			BIO_write(mem, FCryptedBuffer, len); // Запись в Stream бинарного выходного буфера
@@ -1481,21 +1504,24 @@ begin
 
         log('RSA_size');
         size := RSA_size(rsa);
-        log(inttostr(size));
+        log('RSA_size:'+inttostr(size));
 	GetMem(data, size);  // Определяем размер выходному буферу дешифрованной строки
 	GetMem(str, size); // Определяем размер шифрованному буферу после конвертации из base64
-
+        //
+        log('Length(ACryptedData):'+inttostr(Length(ACryptedData)));
 	//Decode base64
 	b64 := BIO_new(BIO_f_base64);
+        BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
 	mem := BIO_new_mem_buf(PAnsiChar(ACryptedData), Length(ACryptedData));
 	BIO_flush(mem);
 	mem := BIO_push(b64, mem);
-	BIO_read(mem, str , Length(ACryptedData)); // Получаем шифрованную строку в бинарном виде
+	len:=BIO_read(mem, str , Length(ACryptedData)); // Получаем шифрованную строку в бинарном виде
+        log('BIO_read:'+inttostr(len));
 	BIO_free_all(mem);
 	// Дешифрование
         log('RSA_private_decrypt');
 	len := RSA_private_decrypt(size, PCharacter(str), PCharacter(data), rsa, RSA_PKCS1_PADDING);
-        log(inttostr(len));
+        log('RSA_private_decrypt:'+inttostr(len));
         if len > 0 then
 	begin
 	// в буфер data данные расшифровываются с «мусором» в конца, очищаем, определяем размер переменной out_ и переписываем в нее нужное количество байт из data
@@ -1656,19 +1682,32 @@ var
     x509:pX509 ;
     key:pEVP_PKEY ;
     digest:array [0..EVP_MAX_MD_SIZE-1] of byte;
-    size,i:cardinal;
+    size,i,num:cardinal;
     context:PEVP_MD_CTX;
     bin:pointer;
     name:pX509_NAME=nil;
     usage:PASN1_STRING;
+    certs:pSTACK_OFX509 = nil;
 begin
   result:=false;
   //rsa:=RSAOpenSSLCert(filename);
 
   bp := BIO_new_file(pchar(filename), 'r+');
   log('PEM_read_bio_X509_REQ');
-  X509 := PEM_read_bio_X509(bp, nil, nil, nil);
+  certs := sk_new_null();
+  while 1=1 do
+  begin
+       X509 := PEM_read_bio_X509(bp, nil, nil, nil);
+       if x509 =nil then break;
+       sk_push(certs, X509);
+  end;
   BIO_free(bp);
+  //
+
+  for num:=0 to sk_num (certs) -1 do
+  begin
+  x509:=sk_value(certs,num);
+  writeln('***********************************************');
   //
   log('X509_get_subject_name');
   NAME:=X509_get_subject_name(x509);
@@ -1735,6 +1774,8 @@ begin
   on e:exception do writeln(e.message);
   end;
 
+  end; //for i...
+
   {
   bp := BIO_new_file(pchar(filename), 'r+');
   log('PEM_read_bio_X509');
@@ -1742,7 +1783,6 @@ begin
   key:=X509_get_pubkey(x509);
   BIO_free(bp);
   }
-
 
   //or
   {

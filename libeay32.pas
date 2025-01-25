@@ -1452,6 +1452,7 @@ function PEM_write_bio_DSAPrivateKey(bp: pBIO; dsa: pDSA; const enc: pEVP_CIPHER
 function PEM_read_bio_PUBKEY(bp: pBIO; {var} x: pEVP_PKEY;
     cb: TPWCallbackFunction; u: pointer): pEVP_PKEY; cdecl;
 function PEM_write_bio_PUBKEY(bp: pBIO; x: pEVP_PKEY): integer; cdecl;
+function PEM_write_bio_RSA_PUBKEY(bp: PBIO; x: PRSA): integer; cdecl;
 
 function PEM_read_bio_X509(bp: pBIO; {var} x: pX509; cb: TPWCallbackFunction;
     u: pointer): pX509; cdecl;
@@ -2249,6 +2250,7 @@ function PEM_write_bio_DSAPrivateKey; external LIBEAY_DLL_NAME {$IFDEF USE_DELAY
 
 function PEM_read_bio_PUBKEY; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 function PEM_write_bio_PUBKEY; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
+function PEM_write_bio_RSA_PUBKEY; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 
 function PEM_read_bio_X509; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 function PEM_write_bio_X509; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};

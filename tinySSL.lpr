@@ -423,6 +423,7 @@ begin
     LoadSSL;
     cert:=cmd.readString('cert');
     if cert='' then exit;
+    if not FileExists (cert) then exit;
     if print_cert(cert)=true then writeln('ok') else writeln('not ok');
     finally
     FreeSSL;
@@ -435,6 +436,7 @@ begin
     try
     LoadSSL;
     privatekey:=cmd.readString('privatekey');
+    if not FileExists (privatekey) then exit;
     if privatekey='' then exit;
     password:=cmd.readString('password') ;
     if print_private(privatekey,password)=true then writeln('ok') else writeln('not ok');
