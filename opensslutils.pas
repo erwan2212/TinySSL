@@ -1545,12 +1545,29 @@ var
    rsa:pRSA=nil;
    pkey:pEVP_PKEY ;
    bin:pointer;
-   size,i:cardinal;
+   size,i,b64len:cardinal;
    digest:array [0..EVP_MAX_MD_SIZE-1] of byte;
+   modulus:pbignum;
+   bio_mem,bio_base64,bio:pbio;
+   data:array [0..4095] of char;
 begin
   result:=false;
   //rsa:=RSAOpenSSLPrivateKey (filename,password); //password will be prompted
   pkey:=LoadPrivateKey (filename,password);
+  //lets display the pubkey
+  bio_mem := BIO_new(BIO_s_mem());
+  bio_base64 := BIO_new(BIO_f_base64());
+  bio:=BIO_push(bio_base64, bio_mem);
+  //write to bio
+  PEM_write_bio_PUBKEY(bio_base64, pkey );
+  Bio_flush(bio_base64);
+  //read from bio
+  b64len:=BIO_read(bio_base64, @data[0], sizeof(data)-1);
+  writeln();
+  data[b64len] := #0;
+  writeln(data);
+  //EVP_PKEY_free(key);
+  BIO_free(bio);//BIO_free(bio_base64);BIO_free(bio_mem);
   rsa:=EVP_PKEY_get1_RSA(pkey);
   //try if rsa<>nil then Writeln('BN_bn2hex N: ', strpas(BN_bn2hex(rsa^.n )));except end;
   //try if rsa<>nil then Writeln('BN_bn2hex D: ', strpas(BN_bn2hex(rsa^.d  )));except end; //exponent
@@ -1671,6 +1688,8 @@ end;
 
 
 //openssl x509 -noout -text -in ca.crt
+//openssl pkey -in ca.key -pubout -outform pem
+//openssl x509 -in certificate.crt -pubkey -noout -outform pem | sha256sum
 function print_cert(filename:string):boolean;
 var
     rsa:pRSA=nil;
@@ -1682,12 +1701,14 @@ var
     x509:pX509 ;
     key:pEVP_PKEY ;
     digest:array [0..EVP_MAX_MD_SIZE-1] of byte;
-    size,i,num:cardinal;
+    size,i,num,b64len:cardinal;
     context:PEVP_MD_CTX;
     bin:pointer;
     name:pX509_NAME=nil;
     usage:PASN1_STRING;
-    certs:pSTACK_OFX509 = nil;
+    certs:pSTACK_OFX509;
+    bio_mem,bio_base64,bio:pBIO;
+    data:array [0..4095] of char;
 begin
   result:=false;
   //rsa:=RSAOpenSSLCert(filename);
@@ -1721,6 +1742,20 @@ begin
 
   log('X509_get_pubkey');
   key:=X509_get_pubkey (x509);
+  //lets display the pubkey
+  bio_mem := BIO_new(BIO_s_mem());
+  bio_base64 := BIO_new(BIO_f_base64());
+  bio:=BIO_push(bio_base64, bio_mem);
+  //write to bio
+  PEM_write_bio_PUBKEY(bio_base64, key );
+  Bio_flush(bio_base64);
+  //read from bio
+  b64len:=BIO_read(bio_base64, @data[0], sizeof(data)-1);
+  writeln();
+  data[b64len] := #0;
+  writeln(data);
+  //EVP_PKEY_free(key);
+  BIO_free(bio);//BIO_free(bio_base64);BIO_free(bio_mem);
 
   //key:=LoadCertPublicKey(filename);
   rsa:=EVP_PKEY_get1_RSA(key);
