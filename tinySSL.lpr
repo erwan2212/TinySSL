@@ -129,6 +129,7 @@ begin
   //
   cmd.declareflag('print_cert', 'print cert details from cert');
   cmd.declareflag('print_private', 'print cert details from privatekey');
+  cmd.declareflag('print_request', 'print request details from filename');
 
   cmd.declareflag('genkey', 'generate rsa keys public.pem and private.pem');
   cmd.declareflag('hash', 'hash password, using algo');
@@ -440,6 +441,19 @@ begin
     if privatekey='' then exit;
     password:=cmd.readString('password') ;
     if print_private(privatekey,password)=true then writeln('ok') else writeln('not ok');
+    finally
+    FreeSSL;
+    end;
+    exit;
+    end;
+
+    if cmd.existsProperty('print_request')=true then
+    begin
+    try
+    LoadSSL;
+    filename:=cmd.readString('filename');
+    if not FileExists (filename) then exit;
+    if print_req(filename)=true then writeln('ok') else writeln('not ok');
     finally
     FreeSSL;
     end;

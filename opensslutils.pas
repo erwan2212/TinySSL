@@ -33,6 +33,7 @@ function X509PEM2DER(filename:string):boolean;
 
 function print_cert(filename:string):boolean;
 function print_private(filename:string;password:string=''):boolean;
+function print_req(filename:string):boolean;
 
 function Encrypt_Pub(sometext:string;var encrypted:string):boolean;
 function Decrypt_Priv(ACryptedData:string):boolean;
@@ -1539,17 +1540,90 @@ begin
 	end;
 end;
 
+procedure PrintFingerprint(cert: PX509);
+var
+md: array[0..EVP_MAX_MD_SIZE - 1] of Byte;
+md_len: Cardinal; i: Integer;
+begin
+        if X509_digest(cert, EVP_sha1(), @md, md_len) = 0 then
+        begin
+        WriteLn('Error computing fingerprint');
+        Exit;
+        end;
+        Write('Fingerprint (SHA-1): ');
+        for i := 0 to md_len - 1 do Write(IntToHex(md[i], 2)); WriteLn;
+end;
+
+function print_req(filename:string):boolean;
+var
+ bp:pbio;
+ X509_REQ:pX509_REQ;
+ name:pX509_NAME=nil;
+ b64len,key_len,i,size:cardinal;
+ key:pEVP_PKEY;
+ bio_mem,bio_base64,bio:pBIO;
+ data:array [0..4095] of char;
+ key_buf,pb:pbyte;
+ digest:array [0..EVP_MAX_MD_SIZE-1] of byte;
+begin
+  result:=false;
+  bp := BIO_new_file(pchar(filename), 'r+');
+  log('PEM_read_bio_X509_REQ');
+  X509_REQ := PEM_read_bio_X509_REQ(bp, nil, nil, nil);
+  BIO_free(bp);
+
+  log('X509_REQ_get_subject_name');
+  NAME:=X509_REQ_get_subject_name(X509_REQ);
+  writeln('subject_name:'+getdn(name));
+
+  log('X509_REQ_get_pubkey');
+  key:=X509_REQ_get_pubkey (X509_REQ);
+  //lets display the pubkey
+  bio_mem := BIO_new(BIO_s_mem());
+  bio_base64 := BIO_new(BIO_f_base64());
+  bio:=BIO_push(bio_base64, bio_mem);
+  //write to bio
+  PEM_write_bio_PUBKEY(bio_base64, key );
+  Bio_flush(bio_base64);
+  //read from bio
+  b64len:=BIO_read(bio_base64, @data[0], sizeof(data)-1);
+  writeln();
+  data[b64len] := #0;
+  writeln('Public key base64:');
+  writeln(data);
+  //EVP_PKEY_free(key);
+  BIO_free_all(bio_base64);//BIO_free(bio_base64);BIO_free(bio_mem);
+
+  key_len := i2d_PUBKEY(key, nil);
+  GetMem(key_buf, key_len);
+  pb:=key_buf ; //https://stackoverflow.com/questions/50952528/get-publickey-certificate-in-der-format-with-openssl-in-c
+  key_len := i2d_PUBKEY(key, @key_buf);
+  writeln('Public key hex:');
+  for i := 0 to key_len - 1 do Write(IntToHex(pb[i], 2));
+  writeln;
+
+  if evp_digest(pb , key_len,@digest[0],size,EVP_sha1(),nil)=1 then
+     begin
+     writeln('Public key hash (sha1):');
+     for i:=0 to size -1 do write(inttohex(digest[i],2));
+     writeln;
+     end;
+
+  result:=true;
+end;
+
 //openssl rsa -noout -text -in ca.key
 function print_private(filename:string;password:string=''):boolean;
 var
    rsa:pRSA=nil;
    pkey:pEVP_PKEY ;
    bin:pointer;
-   size,i,b64len:cardinal;
+   size,i,b64len,key_len:cardinal;
    digest:array [0..EVP_MAX_MD_SIZE-1] of byte;
    modulus:pbignum;
    bio_mem,bio_base64,bio:pbio;
    data:array [0..4095] of char;
+   pb,key_buf:pbyte;
 begin
   result:=false;
   //rsa:=RSAOpenSSLPrivateKey (filename,password); //password will be prompted
@@ -1565,19 +1639,38 @@ begin
   b64len:=BIO_read(bio_base64, @data[0], sizeof(data)-1);
   writeln();
   data[b64len] := #0;
+  writeln('Public key base64:');
   writeln(data);
   //EVP_PKEY_free(key);
   BIO_free(bio);//BIO_free(bio_base64);BIO_free(bio_mem);
+
+  key_len := i2d_PUBKEY(pkey, nil);
+  GetMem(key_buf, key_len);
+  pb:=key_buf ; //https://stackoverflow.com/questions/50952528/get-publickey-certificate-in-der-format-with-openssl-in-c
+  key_len := i2d_PUBKEY(pkey, @key_buf);
+  writeln('Public key hex:');
+  for i := 0 to key_len - 1 do Write(IntToHex(pb[i], 2));
+  writeln;
+
+  if evp_digest(pb , key_len,@digest[0],size,EVP_sha1(),nil)=1 then
+          begin
+          writeln('Public key hash (sha1):');
+          for i:=0 to size -1 do write(inttohex(digest[i],2));
+          writeln;
+          end;
+
   rsa:=EVP_PKEY_get1_RSA(pkey);
   //try if rsa<>nil then Writeln('BN_bn2hex N: ', strpas(BN_bn2hex(rsa^.n )));except end;
   //try if rsa<>nil then Writeln('BN_bn2hex D: ', strpas(BN_bn2hex(rsa^.d  )));except end; //exponent
-  try if rsa<>nil then Writeln('BN_bn2hex E: ', BN_bn2hex(rsa^.e ));except end;
+  writeln();
+  Writeln('Modulo:');
+  try if rsa<>nil then Writeln(BN_bn2hex(rsa^.e ));except end;
   //
   bin:=getmem(BN_num_bytes(rsa^.e));
   BN_bn2bin(rsa^.e,bin);
   if evp_digest(bin , BN_num_bytes(rsa^.e),@digest[0],size,EVP_sha1(),nil)=1 then
      begin
-     write('hash sha1:');
+     writeln('Modulo hash (sha1):');
      for i:=0 to size -1 do write(inttohex(digest[i],2));
      writeln;
      end;
@@ -1735,12 +1828,10 @@ begin
   NAME:=X509_get_subject_name(x509);
   writeln('subject_name:'+getdn(name));
   //
-  //
   log('X509_get_issuer_name');
   NAME:=X509_get_issuer_name(x509);
   writeln('issuer_name:'+getdn(name));
   //
-
   log('X509_get_pubkey');
   key:=X509_get_pubkey (x509);
   //lets display the pubkey
@@ -1767,12 +1858,20 @@ begin
   for i := 0 to key_len - 1 do Write(IntToHex(pb[i], 2));
   writeln;
 
+  if evp_digest(pb , key_len,@digest[0],size,EVP_sha1(),nil)=1 then
+          begin
+          writeln('Public key hash (sha1):');
+          for i:=0 to size -1 do write(inttohex(digest[i],2));
+          writeln;
+          end;
+
   //key:=LoadCertPublicKey(filename);
   rsa:=EVP_PKEY_get1_RSA(key);
 
   //try if rsa<>nil then Writeln('BN_bn2hex N: ', strpas(BN_bn2hex(rsa^.n )));except end;
   //try if rsa<>nil then Writeln('BN_bn2hex D: ', strpas(BN_bn2hex(rsa^.d  )));except end; //exponent
   //n := BN_num_bytes(rsa^.e); writeln(inttostr(n)+' bytes');
+  writeln();
   writeln('Modulo:');
   try if rsa<>nil then Writeln(BN_bn2hex(rsa^.e ));except end;
   //
@@ -1789,13 +1888,14 @@ begin
   //
   if evp_digest(bin , BN_num_bytes(rsa^.e),@digest[0],size,EVP_sha1(),nil)=1 then
      begin
-     writeln('Module hash (sha1):');
+     writeln('Modulo hash (sha1):');
      for i:=0 to size -1 do write(inttohex(digest[i],2));
      writeln;
      end;
   //try if rsa<>nil then Writeln('BN_bn2hex P: ', strpas(BN_bn2hex(rsa^.p   )));except end;
   //try if rsa<>nil then Writeln('BN_bn2hex Q: ', strpas(BN_bn2hex(rsa^.q   )));except end;
 
+  writeln();
   writeln('key_usage:');
   usage := X509_get_ext_d2i(x509, NID_key_usage, nil, nil);
   if (byte(usage^.data^) and $80)=$80 then writeln('  digitalSignature');
@@ -1811,6 +1911,7 @@ begin
   usage:=X509_get_ext_d2i(x509, NID_ext_key_usage,nil, nil);
   }
 
+  writeln;
   try
   log('X509_get_notBefore');
   writeln('notBefore:'+DateTimeToStr (getTime (X509_get_notBefore(x509))));
@@ -1819,6 +1920,9 @@ begin
   except
   on e:exception do writeln(e.message);
   end;
+
+  writeln;
+  PrintFingerprint(x509);
 
   end; //for i...
 
