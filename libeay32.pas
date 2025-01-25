@@ -1173,6 +1173,7 @@ function d2i_DSAPrivateKey_bio(bp: pBIO; dsa: pDSA): pDSA; cdecl;
 function i2d_DSAPrivateKey_bio(bp: pBIO; dsa: pDSA): integer; cdecl;
 function d2i_RSAPrivateKey_bio(bp: pBIO; rsa: pRSA): pRSA; cdecl;
 function i2d_RSAPrivateKey_bio(bp: pBIO; rsa: pRSA): integer; cdecl;
+function i2d_PUBKEY(pkey: pEVP_PKEY; pp: Ppointer): integer; cdecl;
 
 function PKCS12_create(pass:pchar;name:pchar; pkey:pEVP_PKEY; cert:pX509;
     ca:pSTACK_OFX509;nid_key:integer; nid_cert:integer;
@@ -1952,6 +1953,7 @@ function d2i_DSAPrivateKey_bio; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}del
 function i2d_DSAPrivateKey_bio; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 function d2i_RSAPrivateKey_bio; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 function i2d_RSAPrivateKey_bio; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
+function i2d_PUBKEY; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 
 function PKCS12_create; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 

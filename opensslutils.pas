@@ -1701,7 +1701,7 @@ var
     x509:pX509 ;
     key:pEVP_PKEY ;
     digest:array [0..EVP_MAX_MD_SIZE-1] of byte;
-    size,i,num,b64len:cardinal;
+    size,i,num,b64len,key_len:cardinal;
     context:PEVP_MD_CTX;
     bin:pointer;
     name:pX509_NAME=nil;
@@ -1709,6 +1709,7 @@ var
     certs:pSTACK_OFX509;
     bio_mem,bio_base64,bio:pBIO;
     data:array [0..4095] of char;
+    key_buf,pb:pbyte;
 begin
   result:=false;
   //rsa:=RSAOpenSSLCert(filename);
@@ -1753,9 +1754,18 @@ begin
   b64len:=BIO_read(bio_base64, @data[0], sizeof(data)-1);
   writeln();
   data[b64len] := #0;
+  writeln('Public key base64:');
   writeln(data);
   //EVP_PKEY_free(key);
-  BIO_free(bio);//BIO_free(bio_base64);BIO_free(bio_mem);
+  BIO_free_all(bio_base64);//BIO_free(bio_base64);BIO_free(bio_mem);
+
+  key_len := i2d_PUBKEY(key, nil);
+  GetMem(key_buf, key_len);
+  pb:=key_buf ; //https://stackoverflow.com/questions/50952528/get-publickey-certificate-in-der-format-with-openssl-in-c
+  key_len := i2d_PUBKEY(key, @key_buf);
+  writeln('Public key hex:');
+  for i := 0 to key_len - 1 do Write(IntToHex(pb[i], 2));
+  writeln;
 
   //key:=LoadCertPublicKey(filename);
   rsa:=EVP_PKEY_get1_RSA(key);
@@ -1763,7 +1773,8 @@ begin
   //try if rsa<>nil then Writeln('BN_bn2hex N: ', strpas(BN_bn2hex(rsa^.n )));except end;
   //try if rsa<>nil then Writeln('BN_bn2hex D: ', strpas(BN_bn2hex(rsa^.d  )));except end; //exponent
   //n := BN_num_bytes(rsa^.e); writeln(inttostr(n)+' bytes');
-  try if rsa<>nil then Writeln('Modulo: ', BN_bn2hex(rsa^.e ));except end;
+  writeln('Modulo:');
+  try if rsa<>nil then Writeln(BN_bn2hex(rsa^.e ));except end;
   //
   bin:=getmem(BN_num_bytes(rsa^.e));
   BN_bn2bin(rsa^.e,bin);
@@ -1778,7 +1789,7 @@ begin
   //
   if evp_digest(bin , BN_num_bytes(rsa^.e),@digest[0],size,EVP_sha1(),nil)=1 then
      begin
-     write('hash sha1:');
+     writeln('Module hash (sha1):');
      for i:=0 to size -1 do write(inttohex(digest[i],2));
      writeln;
      end;
@@ -1787,13 +1798,13 @@ begin
 
   writeln('key_usage:');
   usage := X509_get_ext_d2i(x509, NID_key_usage, nil, nil);
-  if (byte(usage^.data^) and $80)=$80 then writeln('digitalSignature');
-  if (byte(usage^.data^) and $40)=$40 then writeln('nonrepudiation ');
-  if (byte(usage^.data^) and $20)=$20 then writeln('keyEncipherment ');
-  if (byte(usage^.data^) and $10)=$10 then writeln('dataEncipherment');
-  if (byte(usage^.data^) and $08)=$08 then writeln('keyAgreement');
-  if (byte(usage^.data^) and $04)=$04 then writeln('keyCertSign');
-  if (byte(usage^.data^) and $02)=$02 then writeln('cRLSign');
+  if (byte(usage^.data^) and $80)=$80 then writeln('  digitalSignature');
+  if (byte(usage^.data^) and $40)=$40 then writeln('  nonrepudiation ');
+  if (byte(usage^.data^) and $20)=$20 then writeln('  keyEncipherment ');
+  if (byte(usage^.data^) and $10)=$10 then writeln('  dataEncipherment');
+  if (byte(usage^.data^) and $08)=$08 then writeln('  keyAgreement');
+  if (byte(usage^.data^) and $04)=$04 then writeln('  keyCertSign');
+  if (byte(usage^.data^) and $02)=$02 then writeln('  cRLSign');
 
   {
   //todo
