@@ -142,6 +142,7 @@ const
   NID_commonName=                  13;
   NID_pkcs9_emailAddress= 48;
   NID_ext_key_usage= 126;
+  NID_friendlyName= 156;
 
   V_ASN1_INTEGER = $02;
   V_ASN1_ENUMERATED = 10;
@@ -1213,7 +1214,7 @@ function EVP_sha512: PEVP_MD; cdecl;
 
 procedure EVP_DigestInit(ctx: pEVP_MD_CTX; const _type: pEVP_MD); cdecl;
 procedure EVP_DigestUpdate(ctx: pEVP_MD_CTX; const d: Pointer; cnt: cardinal); cdecl;
-procedure EVP_DigestFinal(ctx: pEVP_MD_CTX; md: PCharacter; var s: cardinal); cdecl;
+procedure EVP_DigestFinal(ctx: pEVP_MD_CTX; md: PCharacter; s: pcardinal); cdecl;
 procedure EVP_SignInit(ctx: pEVP_MD_CTX; const _type: pEVP_MD);
 procedure EVP_SignUpdate(ctx: pEVP_MD_CTX; const d: Pointer; cnt: cardinal);
 function EVP_SignFinal(ctx: pEVP_MD_CTX; sig: pointer; var s: cardinal; key: pEVP_PKEY): integer; cdecl;
@@ -1226,7 +1227,7 @@ function EVP_PKEY_assign(pkey: pEVP_PKEY; key_type: integer;key: PCharacter): in
 function EVP_MD_CTX_copy(_out: pEVP_MD_CTX; _in: pEVP_MD_CTX): integer; cdecl;
 
 
-function EVP_Digest(const data:pointer; count:cardinal; md:PCharacter; var size:cardinal;const type_:pEVP_MD; impl:pointer): integer; cdecl;
+function EVP_Digest(const data:pointer; count:cardinal; md:PCharacter; size:pcardinal;const type_:pEVP_MD; impl:pointer): integer; cdecl;
 function EVP_MD_CTX_create(): PEVP_MD_CTX; cdecl;
 procedure EVP_MD_CTX_destroy(ctx: PEVP_MD_CTX); cdecl;
 function EVP_MD_CTX_cleanup(ctx: PEVP_MD_CTX): TC_INT; cdecl;
@@ -1385,7 +1386,7 @@ procedure X509_EXTENSION_free (ex: Pointer) cdecl ;
 
 
 function X509_sign(x: pX509; pkey: pEVP_PKEY; const md: pEVP_MD): integer; cdecl;
-function X509_digest(x: pX509; const _type: pEVP_MD; md: pointer; var mdlen: cardinal): integer; cdecl;
+function X509_digest(x: pX509; const _type: pEVP_MD; md: pointer; mdlen: pcardinal): integer; cdecl;
 function X509_set_issuer_name(x: pX509; name: pX509_NAME): integer; cdecl;
 function X509_set_subject_name(x: pX509; name: pX509_NAME): integer; cdecl;
 procedure X509V3_set_ctx(ctx: pX509V3_CTX; issuer: pX509; subject: pX509;

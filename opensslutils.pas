@@ -61,6 +61,7 @@ begin
   OpenSSL_add_all_algorithms;
   OpenSSL_add_all_ciphers;
   OpenSSL_add_all_digests;
+
   ERR_load_crypto_strings;
   ERR_load_RSA_strings;
 end;
@@ -324,8 +325,6 @@ log('filename:'+filename);
      writeln('PEM_read_bio_X509 failed');
      exit;
      end;
-
-  //
 
   //log('i2d_PKCS7_bio');
   //result:=i2d_PKCS7_bio (bp,p7)<>-1; //der
@@ -776,7 +775,7 @@ begin
        bin:=getmem(BN_num_bytes(rsa^.e));
        BN_bn2bin(rsa^.e,bin);
        //X509_pubkey_digest(x509, EVP_sha1(), pubkey_hash, &len); // not in openssl 1.x
-       ret:=evp_digest(bin , BN_num_bytes(rsa^.e),@digest[0],size,EVP_sha1(),nil);
+       ret:=evp_digest(bin , BN_num_bytes(rsa^.e),@digest[0],@size,EVP_sha1(),nil);
        if ret=1 then
          begin
          //write('hash sha1:');
@@ -892,6 +891,8 @@ begin
 
   if ca=true then add_ext(x509_cert, NID_basic_constraints, 'critical,CA:true');
   if alt<>'' then add_ext(x509_cert, NID_subject_alt_name,pchar(alt)); //'DNS:localhost'
+
+  //add_ext(x509_cert, NID_friendlyName,pchar('toto'));
 
   //rfc 5280 - key_usage
   value:=ini_readstring('req_ext','key_usage');
@@ -1554,7 +1555,7 @@ var
 md: array[0..EVP_MAX_MD_SIZE - 1] of Byte;
 md_len: Cardinal; i: Integer;
 begin
-        if X509_digest(cert, EVP_sha1(), @md, md_len) = 0 then
+        if X509_digest(cert, EVP_sha1(), @md, @md_len) = 0 then
         begin
         WriteLn('Error computing fingerprint');
         Exit;
@@ -1611,7 +1612,7 @@ begin
   for i := 0 to key_len - 1 do Write(IntToHex(pb[i], 2));
   writeln;
 
-  if evp_digest(pb , key_len,@digest[0],size,EVP_sha1(),nil)=1 then
+  if evp_digest(pb , key_len,@digest[0],@size,EVP_sha1(),nil)=1 then
      begin
      writeln('Public key hash (sha1):');
      for i:=0 to size -1 do write(inttohex(digest[i],2));
@@ -1637,6 +1638,7 @@ begin
   result:=false;
   //rsa:=RSAOpenSSLPrivateKey (filename,password); //password will be prompted
   pkey:=LoadPrivateKey (filename,password);
+
   //lets display the pubkey
   bio_mem := BIO_new(BIO_s_mem());
   bio_base64 := BIO_new(BIO_f_base64());
@@ -1661,7 +1663,7 @@ begin
   for i := 0 to key_len - 1 do Write(IntToHex(pb[i], 2));
   writeln;
 
-  if evp_digest(pb , key_len,@digest[0],size,EVP_sha1(),nil)=1 then
+  if evp_digest(pb , key_len,@digest[0],@size,EVP_sha1(),nil)=1 then
           begin
           writeln('Public key hash (sha1):');
           for i:=0 to size -1 do write(inttohex(digest[i],2));
@@ -1677,7 +1679,7 @@ begin
   //
   bin:=getmem(BN_num_bytes(rsa^.e));
   BN_bn2bin(rsa^.e,bin);
-  if evp_digest(bin , BN_num_bytes(rsa^.e),@digest[0],size,EVP_sha1(),nil)=1 then
+  if evp_digest(bin , BN_num_bytes(rsa^.e),@digest[0],@size,EVP_sha1(),nil)=1 then
      begin
      writeln('Modulo hash (sha1):');
      for i:=0 to size -1 do write(inttohex(digest[i],2));
@@ -1791,7 +1793,7 @@ end;
 
 //openssl x509 -noout -text -in ca.crt
 //openssl pkey -in ca.key -pubout -outform pem
-//openssl x509 -in certificate.crt -pubkey -noout -outform pem | sha256sum
+//openssl x509 -in certificate.crt -pubkey -noout -outform pem
 function print_cert(filename:string):boolean;
 var
     rsa:pRSA=nil;
@@ -1867,7 +1869,7 @@ begin
   for i := 0 to key_len - 1 do Write(IntToHex(pb[i], 2));
   writeln;
 
-  if evp_digest(pb , key_len,@digest[0],size,EVP_sha1(),nil)=1 then
+  if evp_digest(pb , key_len,@digest[0],@size,EVP_sha1(),nil)=1 then
           begin
           writeln('Public key hash (sha1):');
           for i:=0 to size -1 do write(inttohex(digest[i],2));
@@ -1895,7 +1897,7 @@ begin
   EVP_MD_CTX_destroy (context);
   }
   //
-  if evp_digest(bin , BN_num_bytes(rsa^.e),@digest[0],size,EVP_sha1(),nil)=1 then
+  if evp_digest(bin , BN_num_bytes(rsa^.e),@digest[0],@size,EVP_sha1(),nil)=1 then
      begin
      writeln('Modulo hash (sha1):');
      for i:=0 to size -1 do write(inttohex(digest[i],2));
@@ -2124,7 +2126,7 @@ begin
       encrypted:=HexaStringToByte2 (input);
       ret:=EVP_CipherUpdate(context,@buffer[0],@buffer_len,@encrypted[0],length(encrypted));
       end
-      else ret:=EVP_CipherUpdate(context,@buffer[0],@buffer_len,pansichar(input),length(input));
+      else ret:=EVP_CipherUpdate(context,@buffer[0],@buffer_len,pbyte(input),length(input));
    if ret<>1 then raise exception.Create ('EVP_CipherUpdate failed');
    //writeln(buffer_len);
 
@@ -2176,7 +2178,7 @@ begin
 
    EVP_DigestInit(context,md);
    EVP_DigestUpdate(context, pchar(input), length(input));
-   EVP_DigestFinal(context, @digest[0], digest_len);
+   EVP_DigestFinal(context, @digest[0], @digest_len);
    EVP_MD_CTX_destroy (context);
 
    if digest_len<=0 then exit;
