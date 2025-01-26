@@ -347,6 +347,7 @@ function P7B2PEM(filename:string):boolean;
 var
 bp:pBIO;
 p7: pPKCS7;
+i:byte;
 begin
   result:=false;
   log('P7B2PEM');
@@ -355,7 +356,8 @@ begin
   bp := BIO_new_file(pchar(filename), 'r+');
   log('d2i_PKCS7_bio');
   //decode
-  p7:=d2i_PKCS7_bio(bp, nil);
+  //p7:=d2i_PKCS7_bio(bp, nil); //d2i_PKCS7_bio expect a binary der PKCS7
+  p7:=PEM_read_bio_PKCS7(bp,nil,nil,nil); //if your input is in a pem format you should call PEM_read_bio_PKCS7 instead
   BIO_free(bp);
   if p7 = nil then exit;
 
@@ -366,8 +368,11 @@ begin
   begin
        bp := BIO_new_file(pchar(GetCurrentDir+'\'+changefileext(filename,'.crt')), 'w+');
        log('PEM_write_bio_X509');
-       //PEM_write_bio_X509(bp,sk_X509_value(p7^.sign^.cert, 0));
-       PEM_write_bio_X509(bp,sk_value(p7^.sign^.cert, 0));
+       for i:=0 to sk_num(p7^.sign^.cert) -1 do
+           begin
+           //PEM_write_bio_X509(bp,sk_X509_value(p7^.sign^.cert, 0));
+           PEM_write_bio_X509(bp,sk_value(p7^.sign^.cert, i));
+           end;
        BIO_free(bp);
        result:=true;
   end;
