@@ -310,17 +310,21 @@ log('filename:'+filename);
 
   bp := BIO_new_file(pchar(filename), 'r+');
   log('PEM_read_bio_X509');
-  x509_cert:=PEM_read_bio_X509(bp,nil,nil,nil);
-  BIO_free(bp);
+  certs := sk_new_null();
+    while 1=1 do
+    begin
+         x509_cert := PEM_read_bio_X509(bp, nil, nil, nil);
+         if x509_cert =nil then break;
+         sk_push(certs, x509_cert);
+    end;
+    BIO_free(bp);
+  x509_cert :=sk_value(certs,0);
   if x509_cert=nil then
      begin
      writeln('PEM_read_bio_X509 failed');
      exit;
      end;
 
-  //
-  certs := sk_new_null();
-  sk_push(certs, x509_cert);
   //
 
   //log('i2d_PKCS7_bio');
