@@ -119,7 +119,7 @@ begin
   //cmd.declareString('publickey', 'path to a publickey file, not needed if you have the privatekey');
   cmd.declareString('cert', 'path to a certificate');
   //cmd.declareString('input', 'something to be hashed');
-  cmd.declareString('algo', 'md4 md5 sha sha1 sha224 sha256 sha284 sha512 ripemd160 / des_ecb des_cbc des_ede3_ecb des_ede3_cbc rc2_ecb rc4 aes_128_ecb aes_192_ecb aes_256_ecb');
+  cmd.declareString('algo', 'md4 md5 sha sha1 sha224 sha256 sha284 sha512 ripemd160 / des-ecb des-cbc des-ede3-ecb des-ede3-cbc rc2-ecb rc4 aes-128-ecb aes-192-ecb aes-256-ecb');
   cmd.declareString('key', 'optional, used by crypt/encrypt');
   cmd.declareString('debug', 'true|false','false');
   cmd.declareString('filename', 'local filename');
@@ -133,8 +133,11 @@ begin
 
   cmd.declareflag('genkey', 'generate rsa keys public.pem and private.pem');
   cmd.declareflag('hash', 'hash password, using algo');
+  cmd.declareflag('base64encode', 'encode password to base64');
+  cmd.declareflag('base64decode', 'decode password to base64');
   cmd.declareflag('decrypt', 'crypt password (hexa), using algo and optional key');
   cmd.declareflag('encrypt', 'crypt password, using algo and optional key');
+  cmd.declareflag('list_ciphers', 'list all ciphers');
 
   cmd.declareflag('encrypt_pub', 'encrypt a file using public.pem, read from filename');
   cmd.declareflag('decrypt_priv', 'decrypt a file using private.pem, read from filename');
@@ -182,7 +185,23 @@ begin
     algo:=cmd.readString('algo');
     password:=cmd.readString('password');
     key:=cmd.readString('key');
+    try
     if crypt(algo,password,key,1)=true then writeln('ok') else writeln('not ok');
+    except
+    on e:exception do writeln(e.message);
+    end;
+    freessl;
+    exit;
+  end;
+
+  if cmd.existsProperty('list_ciphers')=true then
+  begin
+    LoadSSL;
+    try
+    if list_ciphers=true then writeln('ok') else writeln('not ok');
+    except
+    on e:exception do writeln(e.message);
+    end;
     freessl;
     exit;
   end;
@@ -193,6 +212,24 @@ begin
     algo:=cmd.readString('algo');
     password:=cmd.readString('password');
     if hash(algo,password)=true then writeln('ok') else writeln('not ok');
+    freessl;
+    exit;
+  end;
+
+  if cmd.existsProperty('base64encode')=true then
+  begin
+    LoadSSL;
+    password:=cmd.readString('password');
+    if Base64Encode(password)=true then writeln('ok') else writeln('not ok');
+    freessl;
+    exit;
+  end;
+
+  if cmd.existsProperty('base64decode')=true then
+  begin
+    LoadSSL;
+    password:=cmd.readString('password');
+    if Base64decode(password)=true then writeln('ok') else writeln('not ok');
     freessl;
     exit;
   end;

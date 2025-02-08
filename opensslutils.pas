@@ -6,7 +6,7 @@ interface
 
 uses
   windows, SysUtils, classes,dateutils,
-  libeay32,utils,inifiles;
+  libeay32,utils,inifiles,math;
 
 procedure LoadSSL;
 procedure FreeSSL;
@@ -40,6 +40,9 @@ function Decrypt_Priv(ACryptedData:string):boolean;
 
 function hash(algo,input:string):boolean;
 function crypt(algo,input:string;keystr:string='';enc:integer=1):boolean;
+function list_ciphers:boolean;
+function Base64Encode(message:string):boolean;
+function Base64Decode(message:string):boolean;
 
 function getDN(pDn: pX509_NAME): String;
 function getTime(asn1_time: pASN1_TIME): TDateTime;
@@ -2007,6 +2010,26 @@ begin
 
 end;
 
+procedure ciphers_sorted(cipher:pEVP_CIPHER; from:pchar;_to:pchar; x:pointer); cdecl;
+begin
+  log('ciphers');
+  if cipher<>nil then writeln(strpas(OBJ_nid2sn(EVP_CIPHER_nid(cipher))));
+end;
+
+procedure ciphers(cipher:pEVP_CIPHER; x:pointer); cdecl;
+begin
+  log('ciphers');
+  if cipher<>nil then writeln(strpas(OBJ_nid2sn(EVP_CIPHER_nid(cipher))));
+end;
+
+function list_ciphers:boolean;
+begin
+  result:=false;
+  log('list_ciphers');
+  EVP_CIPHER_do_all_sorted (@ciphers_sorted, nil);
+  result:=true;
+end;
+
 function crypt(algo,input:string;keystr:string='';enc:integer=1):boolean;
 const EVP_MAX_MD_SIZE=64;
 const MD5_DIGEST_LENGTH=16;
@@ -2042,24 +2065,35 @@ begin
    //DES uses a key length of 8 bytes (64 bits).
    //DES uses an IV length of 8 bytes (64 bits).
    //Triple DES uses a key length of 24 bytes (192 bits).
-   if lowercase(algo)='des_ecb' then cipher := EVP_des_ecb(); //ok
-   if lowercase(algo)='des_cbc' then cipher := EVP_des_cbc(); //ok
+   {
+   if lowercase(algo)='des-ecb' then cipher := EVP_des_ecb(); //ok
+   if lowercase(algo)='des-cbc' then cipher := EVP_des_cbc(); //ok
    //
-   if lowercase(algo)='des_ede3_ecb' then cipher := EVP_des_ede3_ecb (); //ok
-   if lowercase(algo)='des_ede3_cbc' then cipher := EVP_des_ede3_cbc(); //ok
+   if lowercase(algo)='des-ede3-ecb' then cipher := EVP_des_ede3_ecb (); //ok
+   if lowercase(algo)='des-ede3-cbc' then cipher := EVP_des_ede3_cbc(); //ok
    //
    if lowercase(algo)='rc4' then cipher := EVP_rc4(); //ok
-   if lowercase(algo)='rc2_ecb' then cipher := EVP_rc2_ecb (); //ok
+   if lowercase(algo)='rc2-ecb' then cipher := EVP_rc2_ecb (); //ok
+   if lowercase(algo)='rc2-cbc' then cipher := EVP_rc2_cbc (); //ok
 
    //The following algorithms will be used based on the size of the key:
    //16 bytes = AES-128
    //24 bytes = AES-192
    //32 bytes = AES-256
-   if lowercase(algo)='aes_128_ecb' then cipher := EVP_aes_128_ecb(); //ok
-   if lowercase(algo)='aes_192_ecb' then cipher := EVP_aes_192_ecb(); //ok
-   if lowercase(algo)='aes_256_ecb' then cipher := EVP_aes_256_ecb(); //ok
+   if lowercase(algo)='aes-128-ecb' then cipher := EVP_aes_128_ecb(); //ok
+   if lowercase(algo)='aes-192-ecb' then cipher := EVP_aes_192_ecb(); //ok
+   if lowercase(algo)='aes-256-ecb' then cipher := EVP_aes_256_ecb(); //ok
+   }
 
-   if cipher=nil then exit;
+   cipher:=EVP_get_cipherbyname(pchar(algo));
+
+   if cipher=nil then
+      begin
+      writeln('cipher=nil');
+      exit;
+      end;
+
+   log('cipher:'+strpas(OBJ_nid2sn(EVP_CIPHER_nid(cipher))));
 
    //lets retrieve some cipher details (key and iv length)
    ret:=EVP_CipherInit_ex(context, cipher, nil, nil, nil,enc);
@@ -2093,6 +2127,7 @@ begin
    //a key was NOT supplied : use a random key with size N (rather than digest md5 hash)
    if (EVP_CIPHER_CTX_key_length(context)>0) and (keystr='') then
    begin
+   writeln('random key');
    setlength(key,EVP_CIPHER_CTX_key_length(context));
    RAND_bytes(@key[0],length(key));
    write('key:');
@@ -2103,6 +2138,7 @@ begin
    //random iv
    if EVP_CIPHER_CTX_iv_length(context)>0 then
    begin
+   writeln('random iv');
    setlength(iv,EVP_CIPHER_CTX_iv_length(context));
    RAND_bytes(@iv[0],length(iv));
    write('iv:');
@@ -2110,11 +2146,31 @@ begin
    writeln;
    end;
 
+   log('***********************************');
+   log('key_length:'+inttostr(EVP_CIPHER_CTX_key_length(context)));
+   log('iv_length:'+inttostr(EVP_CIPHER_CTX_iv_length(context)));
+   log('block_size:'+inttostr(EVP_CIPHER_block_size(cipher)));
+   log('***********************************');
+
+
+   if length(key)<> EVP_CIPHER_CTX_key_length(context) then
+      begin
+      writeln('key length incorrect:'+inttostr(length(key)));
+      exit;
+      end;
+
+   if (EVP_CIPHER_CTX_iv_length(context)>0) and (length(iv)<> EVP_CIPHER_CTX_iv_length(context)) then
+      begin
+      writeln('iv length incorrect:'+inttostr(length(iv)));
+      exit;
+      end;
+
    //EVP_CIPHER_CTX_set_key_length(context, length(key)); // RC2 is an algorithm with variable key size. Therefore the key size must generally be set.
 
    //It should be set to 1 for encryption, 0 for decryption
    log('EVP_CipherInit_ex');
-   if pos('_cbc',lowercase(algo))>0
+   //if pos('cbc',lowercase(algo))>0
+   if EVP_CIPHER_ctx_iv_length(context)>0
       then ret:=EVP_CipherInit_ex(context, cipher, nil, @key[0], @iv[0],-1)  //or digest for hash
       else ret:=EVP_CipherInit_ex(context, cipher, nil, @key[0], nil,-1); //-1 use the previous value
    if ret<>1 then raise exception.Create ('EVP_CipherInit_ex failed');
@@ -2185,6 +2241,64 @@ begin
    for i:=0 to digest_len -1 do write(inttohex(digest[i],2));
    writeln;
    result:=true;
+end;
+
+function Base64Encode(message:string):boolean;
+var
+bio_mem,bio_base64,bio:pbio;
+b64len:integer=0;
+data:array [0..4095] of char;
+ret:integer;
+begin
+  result:=false;
+  bio_base64 := BIO_new(BIO_f_base64());
+  bio_mem := BIO_new(BIO_s_mem());
+  bio:=BIO_push(bio_base64, bio_mem);
+  //write to bio
+  ret:=bio_write(bio, @message[1],length(message) );
+  log('bio_write:'+inttostr(ret));
+  Bio_flush(bio);
+  //read from bio
+  b64len:=BIO_read(bio_mem, @data[0], sizeof(data)-1);
+  log('BIO_read:'+inttostr(b64len));
+  data[b64len] := #0;
+  writeln(data);
+  //
+  bio_free_all(bio);
+  result:=b64len<>0;
+end;
+
+function Base64Decode(message:string):boolean;
+var
+  bio_mem,bio_base64,bio:pbio;
+  encodedSize:integer;
+  data:array [0..4095] of char;
+  ret:integer;
+begin
+  result:=false;
+  encodedSize := 4*ceil(float(length(message) / 3));
+  log('encodedSize:'+inttostr(encodedSize));
+  log('message:'+inttostr(length(message)));
+
+  ret:=EVP_DecodeBlock(@data[0],@message[1],length(message));
+  log('EVP_DecodeBlock:'+inttostr(ret));
+
+  {
+  bio_base64 := BIO_new(BIO_f_base64());
+  bio_mem := BIO_new_mem_buf(@message[1], length(message));
+  bio := BIO_push(bio_base64, bio_mem);
+  BIO_set_close(bio, BIO_CLOSE);
+  //BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL); //Ignore newlines - write everything in one line
+  ret:=BIO_read(bio, @data[0] , 1024);
+  log('BIO_read:'+inttostr(ret));
+  BIO_free_all(bio);
+  }
+
+  data[ret] := #0;
+  writeln(data);
+
+
+  result:=true;
 end;
 
 end.

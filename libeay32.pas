@@ -1225,6 +1225,7 @@ function EVP_PKEY_assign(pkey: pEVP_PKEY; key_type: integer;key: PCharacter): in
 //function EVP_MD_size(e: pEVP_MD): integer;
 //function EVP_MD_CTX_size(e: pEVP_MD_CTX): integer;
 function EVP_MD_CTX_copy(_out: pEVP_MD_CTX; _in: pEVP_MD_CTX): integer; cdecl;
+function EVP_DecodeBlock(t:puchar; const f:puchar;n:cardinal): integer; cdecl;
 
 
 function EVP_Digest(const data:pointer; count:cardinal; md:PCharacter; size:pcardinal;const type_:pEVP_MD; impl:pointer): integer; cdecl;
@@ -1256,10 +1257,13 @@ function EVP_idea_cfb: pEVP_CIPHER; cdecl;
 function EVP_idea_ecb: pEVP_CIPHER; cdecl;
 function EVP_idea_ofb: pEVP_CIPHER; cdecl;
 function EVP_get_cipherbyname(name: PCharacter): pEVP_CIPHER; cdecl;
+procedure EVP_CIPHER_do_all_sorted(fn:pointer; arg:pointer);cdecl;
+procedure EVP_CIPHER_do_all(fn:pointer; arg:pointer);cdecl;
 
 function EVP_des_ede3_ecb: pEVP_CIPHER; cdecl;
 function EVP_rc4: pEVP_CIPHER; cdecl;
 function EVP_rc2_ecb: pEVP_CIPHER; cdecl;
+function EVP_rc2_cbc: pEVP_CIPHER; cdecl;
 function EVP_aes_128_ecb: pEVP_CIPHER; cdecl;
 function EVP_aes_192_ecb: pEVP_CIPHER; cdecl;
 function EVP_aes_256_ecb: pEVP_CIPHER; cdecl;
@@ -1558,6 +1562,9 @@ function EVP_CIPHER_CTX_iv_length(const ctx: PEVP_CIPHER_CTX): Integer; cdecl;
 function EVP_EncryptInit_ex(ctx: PEVP_CIPHER_CTX; const cipher: PEVP_CIPHER;impl: PNotImplemented; const key, iv: PByte): Integer; cdecl;
 function EVP_CIPHER_CTX_new():PEVP_CIPHER_CTX;cdecl;
 procedure EVP_CIPHER_CTX_init(a:PEVP_CIPHER_CTX);cdecl;
+
+function OBJ_nid2sn(n:cardinal):pchar;cdecl;
+function EVP_CIPHER_nid(const e:pEVP_CIPHER):integer; cdecl;
 
 // libeay.ext.pas functions
 
@@ -2007,6 +2014,7 @@ function EVP_Digest; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF
 procedure EVP_DigestInit; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 procedure EVP_DigestUpdate; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 procedure EVP_DigestFinal; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
+function EVP_DecodeBlock; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 
 procedure EVP_SignInit(ctx: pEVP_MD_CTX; const _type: pEVP_MD);
   begin
@@ -2075,10 +2083,13 @@ function EVP_idea_cfb; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$END
 function EVP_idea_ecb; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 function EVP_idea_ofb; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 function EVP_get_cipherbyname; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
+procedure EVP_CIPHER_do_all_sorted; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
+procedure EVP_CIPHER_do_all; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 
 function EVP_des_ede3_ecb; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 function EVP_rc4; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 function EVP_rc2_ecb; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
+function EVP_rc2_cbc; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 function EVP_aes_128_ecb; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 function EVP_aes_192_ecb; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 function EVP_aes_256_ecb; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
@@ -2303,6 +2314,9 @@ procedure AES_cbc_encrypt; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{
 function SMIME_write_PKCS7; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 function SMIME_read_PKCS7; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 
+function OBJ_nid2sn; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
+function EVP_CIPHER_nid; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
+
 // libeay.ext.pas functions
 function EVP_CipherInit_ex(ctx: PEVP_CIPHER_CTX; const cipher: PEVP_CIPHER;
   impl: PNotImplemented; const key, iv: PByte; enc: Integer): Integer; cdecl;
@@ -2333,5 +2347,7 @@ function EVP_CIPHER_CTX_new():PEVP_CIPHER_CTX; cdecl;external LIBEAY_DLL_NAME {$
 procedure EVP_CIPHER_CTX_init(a: PEVP_CIPHER_CTX); cdecl;
   external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 // libeay.ext.pas functions
+
+
 
 end.
