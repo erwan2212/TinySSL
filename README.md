@@ -33,7 +33,7 @@ TinySSL, aka playing with openssl library (libeay32).<br/>
 --pemtop7               convert a pem to p7b, read from cert, write to cert.p7b<br/>
 <br/><br/>
 Example : create a root ca (reusing a previous key), create a csr (reusing a previous key) and generate a certificate (that will work in latest chrome).<br/>
-<br/><br/>
+<br/>
 rem if you want to reuse an existing key and therefore renew instead of recreate<br/>
 tinySSL.exe --mkcert --debug=true --privatekey=ca.key --password=password --filename=ca.crt --ca=true<br/>
 rem recreate, not renew<br/>
@@ -43,3 +43,6 @@ tinySSL.exe --mkreq --debug=true --filename=request.csr --privatekey=request.key
 rem recreate, not renew<br/>
 rem tinySSL.exe --mkreq --debug=true --filename=request.csr<br/>
 tinySSL.exe --signreq --debug=true --alt="DNS:*.groupe.fr" --password=password --filename=request.csr --cert=ca.crt<br/>
+<br/>
+Example : turn a cert file (pem format) into a pfx<br/>
+tinyssl --pemtop12 --cert=mycert.crt --privatekey=mycert.key
