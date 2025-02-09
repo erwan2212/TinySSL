@@ -1642,6 +1642,7 @@ begin
   result:=false;
   //rsa:=RSAOpenSSLPrivateKey (filename,password); //password will be prompted
   pkey:=LoadPrivateKey (filename,password);
+  if pkey=nil then exit;
 
   //lets display the pubkey
   bio_mem := BIO_new(BIO_s_mem());

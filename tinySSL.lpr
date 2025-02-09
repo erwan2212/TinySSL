@@ -147,7 +147,7 @@ begin
   cmd.declareflag('signreq', 'make a certificate from a csr, read from filename and cert, write to filename.crt');
   //cmd.declareflag('selfsign', 'make a self sign cert, write to cert.crt cert.key');
 
-  cmd.declareflag('set_password', 'set password from a private key,read from privatekey and password (optional) - if no password, will remove the existing password ');
+  cmd.declareflag('set_password', 'read from privatekey and creates a new private key with a different password - if no password provided, will remove the existing password');
 
   cmd.declareflag('dertopem', 'convert a binary/der private key or cert to base 64 pem format, read from cert or privatekey, write to cert.crt or privatekey.key ');
   cmd.declareflag('pemtoder', 'convert a base 64 pem format to binary/der private key or cert, read from cert or privatekey, write to cert.der or privatekey.der ');
