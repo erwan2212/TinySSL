@@ -1,6 +1,6 @@
 # TinySSL
 <br/>
-TinySSL, aka playing with openssl library (libeay32).<br/>
+TinySSL, aka playing with openssl library (libeay32) for digest, cipher and certificate matters.<br/>
 <br/>
 --cn=<string>           cn<br/>
 --alt=<string>          alternate name<br/>
@@ -21,8 +21,7 @@ TinySSL, aka playing with openssl library (libeay32).<br/>
 --mkreq                 make a certificate service request, read from privatekey & write to filename.csr<br/>
                         filename.key (if privatekey not specified)<br/>
 --signreq               make a certificate from a csr, read from filename and cert, write to filename.crt<br/>
---set-password          set password from a private key,read from privatekey and password (optional) - if no<br/>
-                        password, will remove the existing password<br/>
+--set-password          read from privatekey and creates a new private key with a different password - if no password provided, will remove the existing password<br/>
 --dertopem              convert a binary/der private key or cert to base 64 pem format, read from cert or<br/>
                         privatekey, write to cert.crt or privatekey.key<br/>
 --pemtoder              convert a base 64 pem format to binary/der private key or cert, read from cert or<br/>
@@ -33,7 +32,7 @@ TinySSL, aka playing with openssl library (libeay32).<br/>
 --pemtop7               convert a pem to p7b, read from cert, write to cert.p7b<br/>
 <br/><br/>
 Example : create a root ca (reusing a previous key), create a csr (reusing a previous key) and generate a certificate (that will work in latest chrome).<br/>
-<br/><br/>
+<br/>
 rem if you want to reuse an existing key and therefore renew instead of recreate<br/>
 tinySSL.exe --mkcert --debug=true --privatekey=ca.key --password=password --filename=ca.crt --ca=true<br/>
 rem recreate, not renew<br/>
@@ -43,3 +42,6 @@ tinySSL.exe --mkreq --debug=true --filename=request.csr --privatekey=request.key
 rem recreate, not renew<br/>
 rem tinySSL.exe --mkreq --debug=true --filename=request.csr<br/>
 tinySSL.exe --signreq --debug=true --alt="DNS:*.groupe.fr" --password=password --filename=request.csr --cert=ca.crt<br/>
+<br/>
+Example : turn a cert file (pem format) into a pfx<br/>
+tinyssl --pemtop12 --cert=mycert.crt --privatekey=mycert.key
