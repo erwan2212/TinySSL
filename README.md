@@ -21,7 +21,7 @@ TinySSL, aka playing with openssl library (libeay32).<br/>
 --mkreq                 make a certificate service request, read from privatekey & write to filename.csr<br/>
                         filename.key (if privatekey not specified)<br/>
 --signreq               make a certificate from a csr, read from filename and cert, write to filename.crt<br/>
---set-password          read from privatekey and creates a new private key with a different password - if no password provided, will remove the existing password</br>
+--set-password          read from privatekey and creates a new private key with a different password - if no password provided, will remove the existing password<br/>
 --dertopem              convert a binary/der private key or cert to base 64 pem format, read from cert or<br/>
                         privatekey, write to cert.crt or privatekey.key<br/>
 --pemtoder              convert a base 64 pem format to binary/der private key or cert, read from cert or<br/>
