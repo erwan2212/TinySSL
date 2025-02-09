@@ -1,6 +1,6 @@
 # TinySSL
 <br/>
-TinySSL, aka playing with openssl library (libeay32).<br/>
+TinySSL, aka playing with openssl library (libeay32) for digest, cipher and certificate matters.<br/>
 <br/>
 --cn=<string>           cn<br/>
 --alt=<string>          alternate name<br/>
