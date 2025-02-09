@@ -41,6 +41,7 @@ function Decrypt_Priv(ACryptedData:string):boolean;
 function hash(algo,input:string):boolean;
 function crypt(algo,input:string;keystr:string='';enc:integer=1):boolean;
 function list_ciphers:boolean;
+function list_hashes:boolean;
 function Base64Encode(message:string):boolean;
 function Base64Decode(message:string):boolean;
 
@@ -1399,7 +1400,7 @@ end;
 //RSA_private_encrypt, RSA_public_decrypt - low-level signature operations ... using the private key rsa
 function Encrypt_Pub(sometext:string;var encrypted:string):boolean;
 var
-	rsa: pRSA; // структура RSA
+	rsa: pRSA=nil; 
 	size: Integer;
 	FCryptedBuffer: pointer; // Выходной буфер
 	b64, mem: pBIO;
@@ -2030,6 +2031,20 @@ begin
   result:=true;
 end;
 
+procedure hashes_sorted(hash:pEVP_MD; from:pchar;_to:pchar; x:pointer); cdecl;
+begin
+  log('hashes');
+  if hash<>nil then writeln(strpas(OBJ_nid2sn(EVP_MD_type(hash))));
+end;
+
+function list_hashes:boolean;
+begin
+  result:=false;
+  log('list_hashes');
+  EVP_MD_do_all_sorted (@hashes_sorted, nil);
+  result:=true;
+end;
+
 function crypt(algo,input:string;keystr:string='';enc:integer=1):boolean;
 const EVP_MAX_MD_SIZE=64;
 const MD5_DIGEST_LENGTH=16;
@@ -2221,6 +2236,7 @@ i:byte;
 begin
    result:=false;
    context := EVP_MD_CTX_create();
+   {
    //if algo='MD2' then md := EVP_md2();
    if uppercase(algo)='MD4' then md := EVP_md4();
    if uppercase(algo)='MD5' then md := EVP_md5();
@@ -2231,6 +2247,17 @@ begin
    if uppercase(algo)='SHA384' then md := EVP_sha384();
    if uppercase(algo)='SHA512' then md := EVP_sha256();
    if uppercase(algo)='RIPEMD160' then md := EVP_ripemd160();
+   }
+
+   md:=EVP_get_digestbyname(pchar(algo));
+
+   if md=nil then
+   begin
+   writeln('md=nil');
+   exit;
+   end;
+
+   log('digest:'+strpas(OBJ_nid2sn(EVP_MD_type(md))));
 
    EVP_DigestInit(context,md);
    EVP_DigestUpdate(context, pchar(input), length(input));

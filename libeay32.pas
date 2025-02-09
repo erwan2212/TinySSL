@@ -1259,6 +1259,8 @@ function EVP_idea_ofb: pEVP_CIPHER; cdecl;
 function EVP_get_cipherbyname(name: PCharacter): pEVP_CIPHER; cdecl;
 procedure EVP_CIPHER_do_all_sorted(fn:pointer; arg:pointer);cdecl;
 procedure EVP_CIPHER_do_all(fn:pointer; arg:pointer);cdecl;
+procedure EVP_MD_do_all_sorted(fn:pointer; arg:pointer);cdecl;
+procedure EVP_MD_do_all(fn:pointer; arg:pointer);cdecl;
 
 function EVP_des_ede3_ecb: pEVP_CIPHER; cdecl;
 function EVP_rc4: pEVP_CIPHER; cdecl;
@@ -1565,6 +1567,7 @@ procedure EVP_CIPHER_CTX_init(a:PEVP_CIPHER_CTX);cdecl;
 
 function OBJ_nid2sn(n:cardinal):pchar;cdecl;
 function EVP_CIPHER_nid(const e:pEVP_CIPHER):integer; cdecl;
+function EVP_MD_type(const e:pEVP_MD):integer; cdecl;
 
 // libeay.ext.pas functions
 
@@ -2085,6 +2088,8 @@ function EVP_idea_ofb; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$END
 function EVP_get_cipherbyname; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 procedure EVP_CIPHER_do_all_sorted; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 procedure EVP_CIPHER_do_all; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
+procedure EVP_MD_do_all_sorted; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
+procedure EVP_MD_do_all; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 
 function EVP_des_ede3_ecb; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 function EVP_rc4; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
@@ -2316,6 +2321,7 @@ function SMIME_read_PKCS7; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{
 
 function OBJ_nid2sn; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 function EVP_CIPHER_nid; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
+function EVP_MD_type; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 
 // libeay.ext.pas functions
 function EVP_CipherInit_ex(ctx: PEVP_CIPHER_CTX; const cipher: PEVP_CIPHER;

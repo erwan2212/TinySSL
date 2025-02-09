@@ -11,11 +11,10 @@ uses
   cthreads,
   {$ENDIF}
   windows,sysutils,classes,
-  libeay32,
   rcmdline in '..\rcmdline-master\rcmdline.pas',
   opensslutils,
   utils,
-  ssleay32;
+  libeay32,ssleay32;
 
 //https://learn.microsoft.com/en-us/windows/win32/api/wincrypt/ns-wincrypt-publickeystruc
 type
@@ -119,7 +118,7 @@ begin
   //cmd.declareString('publickey', 'path to a publickey file, not needed if you have the privatekey');
   cmd.declareString('cert', 'path to a certificate');
   //cmd.declareString('input', 'something to be hashed');
-  cmd.declareString('algo', 'md4 md5 sha sha1 sha224 sha256 sha284 sha512 ripemd160 / des-ecb des-cbc des-ede3-ecb des-ede3-cbc rc2-ecb rc4 aes-128-ecb aes-192-ecb aes-256-ecb');
+  cmd.declareString('algo', 'use list_cipher or list_digest');
   cmd.declareString('key', 'optional, used by crypt/encrypt');
   cmd.declareString('debug', 'true|false','false');
   cmd.declareString('filename', 'local filename');
@@ -137,7 +136,8 @@ begin
   cmd.declareflag('base64decode', 'decode password to base64');
   cmd.declareflag('decrypt', 'crypt password (hexa), using algo and optional key');
   cmd.declareflag('encrypt', 'crypt password, using algo and optional key');
-  cmd.declareflag('list_ciphers', 'list all ciphers');
+  cmd.declareflag('list_cipher', 'list all ciphers');
+  cmd.declareflag('list_digest', 'list all digests');
 
   cmd.declareflag('encrypt_pub', 'encrypt a file using public.pem, read from filename');
   cmd.declareflag('decrypt_priv', 'decrypt a file using private.pem, read from filename');
@@ -194,11 +194,23 @@ begin
     exit;
   end;
 
-  if cmd.existsProperty('list_ciphers')=true then
+  if cmd.existsProperty('list_cipher')=true then
   begin
     LoadSSL;
     try
     if list_ciphers=true then writeln('ok') else writeln('not ok');
+    except
+    on e:exception do writeln(e.message);
+    end;
+    freessl;
+    exit;
+  end;
+
+  if cmd.existsProperty('list_digest')=true then
+  begin
+    LoadSSL;
+    try
+    if list_hashes=true then writeln('ok') else writeln('not ok');
     except
     on e:exception do writeln(e.message);
     end;
