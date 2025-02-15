@@ -39,7 +39,7 @@ function Encrypt_Pub(sometext:string;var encrypted:string):boolean;
 function Decrypt_Priv(ACryptedData:string):boolean;
 
 function hash(algo,input:string):boolean;
-function crypt(algo,input:string;keystr:string='';enc:integer=1):boolean;
+function crypt(algo,input:string;keystr:string='';ivstr:string='';enc:integer=1):boolean;
 function list_ciphers:boolean;
 function list_hashes:boolean;
 function Base64Encode(message:string):boolean;
@@ -1362,10 +1362,10 @@ begin
         // 2. save public key to pem
 	bp_public := BIO_new_file(pchar(GetCurrentDir+'\public.pem'), 'w+');
         log('2. save public key OK');
+        //Cette fonction est plus générale et peut écrire des clés publiques de plusieurs types, pas seulement des clés RSA.
         ret:=PEM_write_bio_PUBKEY (bp_public ,pkey);
 	if ret <>1 then goto free_all;
 
-        // 2.1 save public key to rsa -> creates the same file as above ...
 	{
         bp_public2 := BIO_new_file(pchar(GetCurrentDir+'\public_rsa.pub'), 'w+');
         log('2.1 save public key OK');
@@ -1795,7 +1795,6 @@ else
   result := time}
 end;
 
-
 //openssl x509 -noout -text -in ca.crt
 //openssl pkey -in ca.key -pubout -outform pem
 //openssl x509 -in certificate.crt -pubkey -noout -outform pem
@@ -1970,6 +1969,42 @@ begin
   result:=true;
 end;
 
+function print_p12(filename,password:string):boolean;
+var
+    p12_cert:pPKCS12 = nil;
+    pkey:pEVP_PKEY=nil;
+    x509:pX509=nil;
+    additional_certs:pSTACK_OFX509 = nil;
+    bp:pBIO;
+    err_reason:integer;
+    //
+    name:pX509_NAME=nil;
+begin
+  log('filename:'+filename);
+  result:=false;
+  bp := BIO_new_file(pchar(filename), 'r+');
+  log('d2i_PKCS12_bio');
+  //decode
+  p12_cert:=d2i_PKCS12_bio(bp, nil);
+  if p12_cert = nil then exit;
+  log('PKCS12_parse');
+  //this is the export password, not the private key password
+  err_reason:=PKCS12_parse(p12_cert, pchar(password), pkey, x509, additional_certs);
+  //if err_reason<>0 then
+  log(inttostr(err_reason));
+  BIO_free(bp);
+  if err_reason =0 then exit;
+
+  log('X509_get_subject_name');
+  NAME:=X509_get_subject_name(x509);
+  writeln('subject_name:'+getdn(name));
+  //
+  log('X509_get_issuer_name');
+  NAME:=X509_get_issuer_name(x509);
+  writeln('issuer_name:'+getdn(name));
+
+end;
+
 function set_password(filename,password:string):boolean;
 var
 pkey:pEVP_PKEY ;
@@ -2046,7 +2081,7 @@ begin
   result:=true;
 end;
 
-function crypt(algo,input:string;keystr:string='';enc:integer=1):boolean;
+function crypt(algo,input:string;keystr:string='';ivstr:string='';enc:integer=1):boolean;
 const EVP_MAX_MD_SIZE=64;
 const MD5_DIGEST_LENGTH=16;
       //key:array[0..15] of byte=($11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11,$11);
@@ -2131,7 +2166,7 @@ begin
    writeln;
    }
 
-   //a key was supplied
+   //key was supplied
    if keystr<>'' then
    begin
    key:=HexaStringToByte2 (keystr);
@@ -2140,6 +2175,15 @@ begin
    writeln;
    end;
 
+   //iv was supplied
+   if ivstr<>'' then
+   begin
+   iv:=HexaStringToByte2 (ivstr);
+   write('iv:');
+   for i:=0 to length(iv) -1 do write(inttohex(iv[i],2));
+   writeln;
+   end;
+  
    //a key was NOT supplied : use a random key with size N (rather than digest md5 hash)
    if (EVP_CIPHER_CTX_key_length(context)>0) and (keystr='') then
    begin
@@ -2152,7 +2196,7 @@ begin
    end;
 
    //random iv
-   if EVP_CIPHER_CTX_iv_length(context)>0 then
+   if (EVP_CIPHER_CTX_iv_length(context)>0) and (ivstr='') then
    begin
    writeln('random iv');
    setlength(iv,EVP_CIPHER_CTX_iv_length(context));
@@ -2275,11 +2319,12 @@ function Base64Encode(message:string):boolean;
 var
 bio_mem,bio_base64,bio:pbio;
 b64len:integer=0;
-data:array [0..4095] of char;
+data:array [0..8192-1] of char;
 ret:integer;
 begin
   result:=false;
   bio_base64 := BIO_new(BIO_f_base64());
+  //BIO_set_flags(bio_base64, BIO_FLAGS_BASE64_NO_NL); //Ignore newlines - write everything in one line
   bio_mem := BIO_new(BIO_s_mem());
   bio:=BIO_push(bio_base64, bio_mem);
   //write to bio
@@ -2300,7 +2345,7 @@ function Base64Decode(message:string):boolean;
 var
   bio_mem,bio_base64,bio:pbio;
   encodedSize:integer;
-  data:array [0..4095] of char;
+  data:array [0..8192-1] of char;
   ret:integer;
 begin
   result:=false;
@@ -2308,19 +2353,21 @@ begin
   log('encodedSize:'+inttostr(encodedSize));
   log('message:'+inttostr(length(message)));
 
+  {
+  //works but not with big inputs - to be reviewed
   ret:=EVP_DecodeBlock(@data[0],@message[1],length(message));
   log('EVP_DecodeBlock:'+inttostr(ret));
+  }
 
-  {
+
   bio_base64 := BIO_new(BIO_f_base64());
   bio_mem := BIO_new_mem_buf(@message[1], length(message));
   bio := BIO_push(bio_base64, bio_mem);
-  BIO_set_close(bio, BIO_CLOSE);
   //BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL); //Ignore newlines - write everything in one line
-  ret:=BIO_read(bio, @data[0] , 1024);
+  ret:=BIO_read(bio, @data[0] , length(data));
   log('BIO_read:'+inttostr(ret));
   BIO_free_all(bio);
-  }
+
 
   data[ret] := #0;
   writeln(data);

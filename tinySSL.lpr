@@ -44,11 +44,14 @@ BYTE            privateExponent[rsapubkey.bitlen/8];
 
 var
   cmd: TCommandLineReader;
-  filename,encrypted,key,algo,password,privatekey,cert,cn,alt:string;
+  filename,encrypted,key,algo,iv,password,privatekey,cert,cn,alt:string;
   ca:boolean=false;
   hfile_:thandle=thandle(-1);
   mem_:array[0..8192-1] of char;
   size_:dword=0;
+  inhandle:thandle;
+  input_:array of byte;
+  dw:dword;
 
 
 
@@ -119,7 +122,8 @@ begin
   cmd.declareString('cert', 'path to a certificate');
   //cmd.declareString('input', 'something to be hashed');
   cmd.declareString('algo', 'use list_cipher or list_digest');
-  cmd.declareString('key', 'optional, used by crypt/encrypt');
+  cmd.declareString('key', 'optional, used by decrypt/encrypt');
+  cmd.declareString('iv', 'optional, used by decrypt/encrypt');
   cmd.declareString('debug', 'true|false','false');
   cmd.declareString('filename', 'local filename');
 
@@ -158,6 +162,24 @@ begin
   //
   cmd.parse(cmdline);
 
+  inhandle := GetStdHandle(STD_INPUT_HANDLE);
+  if GetFileType(inhandle) <> FILE_TYPE_CHAR then
+     begin
+     setlength(input_,512);
+     ZeroMemory(@input_[0],sizeof(input));
+     dw:=0;
+     while Readfile(inhandle,input_[0],sizeof(input),dw ,nil) =true do
+        begin
+        if dw=0 then exit;
+        password:=password+strpas(pchar(@input_[0]));
+        ZeroMemory(@input_[0],sizeof(input));
+        end;
+     //in some situations, the input ends with CRLF in which case we will remove it
+     if (password[length(password)-1]=#13) and (password[length(password)]=#10) then delete(password,length(password)-1,2) ;
+     //log('input:'+password,1);
+     //log('input length:'+inttostr(length(password)),1);
+     end;
+
   debug:= cmd.readString('debug')='true';
 
   if cmd.existsProperty('s_client')=true then
@@ -172,9 +194,10 @@ begin
   begin
     LoadSSL;
     algo:=cmd.readString('algo');
-    password:=cmd.readString('password');
+    if password='' then password:=cmd.readString('password');
     key:=cmd.readString('key');
-    if crypt(algo,password,key,0)=true then writeln('ok') else writeln('not ok');
+    iv:=cmd.readString('iv');
+    if crypt(algo,password,key,iv,0)=true then {writeln('ok')} else writeln('not ok');
     freessl;
     exit;
   end;
@@ -183,10 +206,11 @@ begin
   begin
     LoadSSL;
     algo:=cmd.readString('algo');
-    password:=cmd.readString('password');
+    if password='' then password:=cmd.readString('password');
     key:=cmd.readString('key');
+    iv:=cmd.readString('iv');
     try
-    if crypt(algo,password,key,1)=true then writeln('ok') else writeln('not ok');
+    if crypt(algo,password,key,iv,1)=true then {writeln('ok')} else writeln('not ok');
     except
     on e:exception do writeln(e.message);
     end;
@@ -222,8 +246,8 @@ begin
   begin
     LoadSSL;
     algo:=cmd.readString('algo');
-    password:=cmd.readString('password');
-    if hash(algo,password)=true then writeln('ok') else writeln('not ok');
+    if password='' then password:=cmd.readString('password');
+    if hash(algo,password)=true then {writeln('ok')} else writeln('not ok');
     freessl;
     exit;
   end;
@@ -231,8 +255,8 @@ begin
   if cmd.existsProperty('base64encode')=true then
   begin
     LoadSSL;
-    password:=cmd.readString('password');
-    if Base64Encode(password)=true then writeln('ok') else writeln('not ok');
+    if password='' then password:=cmd.readString('password');
+    if Base64Encode(password)=true then {writeln('ok')} else writeln('not ok');
     freessl;
     exit;
   end;
@@ -240,8 +264,8 @@ begin
   if cmd.existsProperty('base64decode')=true then
   begin
     LoadSSL;
-    password:=cmd.readString('password');
-    if Base64decode(password)=true then writeln('ok') else writeln('not ok');
+    if password='' then password:=cmd.readString('password');
+    if Base64decode(password)=true then {writeln('ok')} else writeln('not ok');
     freessl;
     exit;
   end;
