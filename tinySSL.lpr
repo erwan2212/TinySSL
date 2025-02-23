@@ -52,6 +52,8 @@ var
   inhandle:thandle;
   input_:array of byte;
   dw:dword;
+  ws:widestring;
+  utf16:boolean=false;
 
 
 
@@ -98,6 +100,7 @@ begin
     closehandle(hfile_);
 end;
 
+
 begin
   //loadrsa('decoded.bin');
   //exit;
@@ -124,6 +127,7 @@ begin
   cmd.declareString('algo', 'use list_cipher or list_digest');
   cmd.declareString('key', 'optional, used by decrypt/encrypt');
   cmd.declareString('iv', 'optional, used by decrypt/encrypt');
+  cmd.declareString('utf16', 'true|false','false');
   cmd.declareString('debug', 'true|false','false');
   cmd.declareString('filename', 'local filename');
 
@@ -181,6 +185,7 @@ begin
      end;
 
   debug:= cmd.readString('debug')='true';
+  utf16:= cmd.readString('utf16')='true';
 
   if cmd.existsProperty('s_client')=true then
      begin
@@ -247,7 +252,8 @@ begin
     LoadSSL;
     algo:=cmd.readString('algo');
     if password='' then password:=cmd.readString('password');
-    if hash(algo,password)=true then {writeln('ok')} else writeln('not ok');
+    input_:=AnsiStringtoByte (password,utf16);
+    if hash(algo,input_)=true then {writeln('ok')} else writeln('not ok');
     freessl;
     exit;
   end;
@@ -256,7 +262,8 @@ begin
   begin
     LoadSSL;
     if password='' then password:=cmd.readString('password');
-    if Base64Encode(password)=true then {writeln('ok')} else writeln('not ok');
+    input_:=AnsiStringtoByte (password,utf16);
+    if Base64Encode(input_)=true then {writeln('ok')} else writeln('not ok');
     freessl;
     exit;
   end;
@@ -265,7 +272,7 @@ begin
   begin
     LoadSSL;
     if password='' then password:=cmd.readString('password');
-    if Base64decode(password)=true then {writeln('ok')} else writeln('not ok');
+    if Base64decode(password,utf16)=true then {writeln('ok')} else writeln('not ok');
     freessl;
     exit;
   end;

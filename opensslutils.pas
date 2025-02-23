@@ -38,12 +38,12 @@ function print_req(filename:string):boolean;
 function Encrypt_Pub(sometext:string;var encrypted:string):boolean;
 function Decrypt_Priv(ACryptedData:string):boolean;
 
-function hash(algo,input:string):boolean;
+function hash(algo:string;input:array of byte):boolean;
 function crypt(algo,input:string;keystr:string='';ivstr:string='';enc:integer=1):boolean;
 function list_ciphers:boolean;
 function list_hashes:boolean;
-function Base64Encode(message:string):boolean;
-function Base64Decode(message:string):boolean;
+function Base64Encode(message:array of byte):boolean;
+function Base64Decode(message:string;utf16:boolean=false):boolean;
 
 function getDN(pDn: pX509_NAME): String;
 function getTime(asn1_time: pASN1_TIME): TDateTime;
@@ -2270,7 +2270,7 @@ begin
    result:=true;
 end;
 
-function hash(algo,input:string):boolean;
+function hash(algo:string;input:array of byte):boolean;
 const EVP_MAX_MD_SIZE=64;
 var
 context:pEVP_MD_CTX;
@@ -2303,9 +2303,10 @@ begin
    end;
 
    log('digest:'+strpas(OBJ_nid2sn(EVP_MD_type(md))));
+   log('length(input):'+inttostr(length(input)));
 
    EVP_DigestInit(context,md);
-   EVP_DigestUpdate(context, pchar(input), length(input));
+   EVP_DigestUpdate(context, @input[0], length(input));
    EVP_DigestFinal(context, @digest[0], @digest_len);
    EVP_MD_CTX_destroy (context);
 
@@ -2315,7 +2316,7 @@ begin
    result:=true;
 end;
 
-function Base64Encode(message:string):boolean;
+function Base64Encode(message:array of byte):boolean;
 var
 bio_mem,bio_base64,bio:pbio;
 b64len:integer=0;
@@ -2328,11 +2329,11 @@ begin
   bio_mem := BIO_new(BIO_s_mem());
   bio:=BIO_push(bio_base64, bio_mem);
   //write to bio
-  ret:=bio_write(bio, @message[1],length(message) );
+  ret:=bio_write(bio, @message[0],length(message) );
   log('bio_write:'+inttostr(ret));
   Bio_flush(bio);
   //read from bio
-  b64len:=BIO_read(bio_mem, @data[0], sizeof(data)-1);
+  b64len:=BIO_read(bio_mem, @data[0], sizeof(data)); //sizeof(data)-1?
   log('BIO_read:'+inttostr(b64len));
   data[b64len] := #0;
   writeln(data);
@@ -2341,16 +2342,16 @@ begin
   result:=b64len<>0;
 end;
 
-function Base64Decode(message:string):boolean;
+function Base64Decode(message:string;utf16:boolean=false):boolean;
 var
   bio_mem,bio_base64,bio:pbio;
   encodedSize:integer;
-  data:array [0..8192-1] of char;
+  data:array [0..8192-1] of byte;
   ret:integer;
 begin
   result:=false;
   encodedSize := 4*ceil(float(length(message) / 3));
-  log('encodedSize:'+inttostr(encodedSize));
+  //log('encodedSize:'+inttostr(encodedSize));
   log('message:'+inttostr(length(message)));
 
   {
@@ -2366,12 +2367,22 @@ begin
   //BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL); //Ignore newlines - write everything in one line
   ret:=BIO_read(bio, @data[0] , length(data));
   log('BIO_read:'+inttostr(ret));
+
+  if ret=0 then
+     begin
+     BIO_reset (bio);
+     log('set flags BIO_FLAGS_BASE64_NO_NL');
+     BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL); //Ignore newlines - write everything in one line
+     ret:=BIO_read(bio, @data[0] , length(data));
+     log('BIO_read:'+inttostr(ret));
+     end;
+
   BIO_free_all(bio);
 
-
-  data[ret] := #0;
-  writeln(data);
-
+  data[ret] := 0;
+  if utf16=true
+     then writeln(ansistring(TEncoding.Unicode.GetString(data,0,ret)))
+     else writeln(strpas(@data[0]));
 
   result:=true;
 end;
