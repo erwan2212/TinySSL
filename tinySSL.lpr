@@ -106,8 +106,6 @@ begin
   //exit;
   //debug:=true;
 
-
-
   if paramcount=0 then
   begin
     writeln('https://github.com/erwan2212');
@@ -146,6 +144,7 @@ begin
   cmd.declareflag('encrypt', 'crypt password, using algo and optional key');
   cmd.declareflag('list_cipher', 'list all ciphers');
   cmd.declareflag('list_digest', 'list all digests');
+  cmd.declareflag('tohexa', 'convert a password string to hexa');
 
   cmd.declareflag('encrypt_pub', 'encrypt a file using public.pem, read from filename');
   cmd.declareflag('decrypt_priv', 'decrypt a file using private.pem, read from filename');
@@ -245,6 +244,14 @@ begin
     end;
     freessl;
     exit;
+  end;
+
+
+  if cmd.existsProperty('tohexa')=true then
+  begin
+    if password='' then password:=cmd.readString('password');
+    input_:=AnsiStringtoByte (password,utf16);
+    writeln(ByteToHexaString(input_));
   end;
 
   if cmd.existsProperty('hash')=true then
@@ -539,8 +546,6 @@ begin
     end;
     exit;
     end;
-
-
 
 end.
 

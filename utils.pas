@@ -12,6 +12,9 @@ procedure log(msg:string;level:byte=0);
 function HexaStringToByte2(hash:string):tbytes;
 function AnsiStringtoByte(input:string;unicode:boolean=false):tbytes;
 
+function ByteToHexaString(hash:pbyte;len:dword):string;overload;
+function ByteToHexaString(hash:array of byte):string;
+
 var
   debug:boolean=false;
 
@@ -21,6 +24,35 @@ procedure log(msg:string;level:byte=0);
 begin
 if (level=0) and (debug=false) then exit;
 writeln(msg);
+end;
+
+function ByteToHexaString(hash:pbyte;len:dword):string;overload;
+var
+  tmp:tbytes;
+begin
+SetLength(tmp,len);
+ZeroMemory(@tmp[0],len);
+CopyMemory(@tmp[0],hash,len) ;
+result:=ByteToHexaString(tmp);
+end;
+
+//function HashByteToString(hash:tbyte16):string;
+function ByteToHexaString(hash:array of byte):string;
+var
+  i:dword;
+  dummy:string{$ifdef fpc}=''{$endif fpc};
+begin
+log('**** ByteToHexaString ****');
+log('sizeof:'+inttostr(sizeof(hash)));
+//setlength(dummy,sizeof(hash)*2);
+try
+//writeln('sizeof(hash):'+inttostr(sizeof(hash)));
+//writeln('length(hash):'+inttostr(length(hash)));
+  for i:=0 to sizeof(hash)-1 do  dummy:=dummy+inttohex(hash[i],2);
+  result:=dummy;
+except
+on e:exception do log('ByteToHexaString:'+e.Message );
+end;
 end;
 
 function HexaStringToByte2(hash:string):tbytes;
@@ -73,6 +105,7 @@ begin
 setlength(result,length(input)*2);
 //log('AnsiStringtoByte len:'+inttostr(length(input)));
 //for i:=1 to length(input)  do result[(i-1)*2]:=ord(input[i]);
+//or quicker?
 ws:=widestring(input);
 copymemory(@result[0],@ws[1],length(result));
 end;

@@ -49,6 +49,8 @@ function getDN(pDn: pX509_NAME): String;
 function getTime(asn1_time: pASN1_TIME): TDateTime;
 function getSerialNumber(x509:px509): String;
 
+function hextosomething(str:string):boolean;
+
 implementation
 
 type
@@ -2032,13 +2034,13 @@ end;
 //test...wip
 function hextosomething(str:string):boolean;
 var
-b:pBIGNUM;
+b:pBIGNUM=nil;
 p:pointer;
 len,i:integer;
 begin
-
-  b:=BN_new();
-  len:=BN_hex2bn(b,pchar(str));
+  log('hextosomething');
+  len:=BN_hex2bn(b, @str[1]);
+  log('len:'+inttostr(len));
   if len<=0 then exit;
   getmem(p,len);
   p:=bn_bn2hex(b);
