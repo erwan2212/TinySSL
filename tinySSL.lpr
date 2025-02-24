@@ -44,7 +44,7 @@ BYTE            privateExponent[rsapubkey.bitlen/8];
 
 var
   cmd: TCommandLineReader;
-  filename,encrypted,key,algo,iv,password,privatekey,cert,cn,alt:string;
+  filename,encrypted,key,algo,iv,password,privatekey,cert,cn,alt,s:string;
   ca:boolean=false;
   hfile_:thandle=thandle(-1);
   mem_:array[0..8192-1] of char;
@@ -145,6 +145,7 @@ begin
   cmd.declareflag('list_cipher', 'list all ciphers');
   cmd.declareflag('list_digest', 'list all digests');
   cmd.declareflag('tohexa', 'convert a password string to hexa');
+  cmd.declareflag('fromhexa', 'convert a password hexa to string');
 
   cmd.declareflag('encrypt_pub', 'encrypt a file using public.pem, read from filename');
   cmd.declareflag('decrypt_priv', 'decrypt a file using private.pem, read from filename');
@@ -253,6 +254,15 @@ begin
     input_:=AnsiStringtoByte (password,utf16);
     writeln(ByteToHexaString(input_));
   end;
+
+  if cmd.existsProperty('fromhexa')=true then
+       begin
+       if password='' then password:=cmd.readString('password');
+       input_:=HexaStringToByte2 (password);
+       setlength(s,length(input_));
+       copymemory(@s[1],@input_[0],length(input_));
+       writeln(s);
+       end;
 
   if cmd.existsProperty('hash')=true then
   begin
