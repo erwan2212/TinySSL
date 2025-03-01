@@ -2,49 +2,49 @@
 <br/>
 TinySSL, aka playing with openssl library (libeay32) for digest, cipher and certificate matters.<br/>
 <br/>
---cn=<string>           cn
---alt=<string>          alternate name
---ca=<string>           true|false (default: false)
---password=<string>     password
---privatekey=<string>   path to a privatekey file
---cert=<string>         path to a certificate
---algo=<string>         use list_cipher or list_digest
---key=<string>          optional, used by decrypt/encrypt
---iv=<string>           optional, used by decrypt/encrypt
---utf16=<string>        true|false (default: false)
---debug=<string>        true|false (default: false)
---filename=<string>     local filename
---s_client              will retrieve ssl information from remote host, cn=host
---print_cert            print cert details from cert
---print_private         print cert details from privatekey
---print_request         print request details from filename
---genkey                generate rsa keys public.pem and private.pem
---hash                  hash password, using algo
---base64encode          encode password to base64
---base64decode          decode password to base64
---decrypt               crypt password (hexa), using algo and optional key
---encrypt               crypt password, using algo and optional key
---list_cipher           list all ciphers
---list_digest           list all digests
---tohexa                convert a password string to hexa
---fromhexa              convert a password hexa to string
---encrypt_pub           encrypt a file using public.pem, read from filename
---decrypt_priv          decrypt a file using private.pem, read from filename
---mkcert                make a self sign root cert, read from privatekey (option) & write to filename.crt and
-                        filename.key
---mkreq                 make a certificate service request, read from privatekey & write to filename.csr
-                        filename.key (if privatekey not specified)
---signreq               make a certificate from a csr, read from filename and cert, write to filename.crt
---set_password          read from privatekey and creates a new private key with a different password - if no
-                        password provided, will remove the existing password
---dertopem              convert a binary/der private key or cert to base 64 pem format, read from cert or
-                        privatekey, write to cert.crt or privatekey.key
---pemtoder              convert a base 64 pem format to binary/der private key or cert, read from cert or
-                        privatekey, write to cert.der or privatekey.der
---p12topem              convert a pfx to pem, read from cert, write to cert.crt and cert.key
---pemtop12              convert a pem to pfx, read from cert and privatekey, write to cert.pfx
---p7topem               convert a p7b to pem, read from cert, write to cert.crt
---pemtop7               convert a pem to p7b, read from cert, write to cert.p7b
+--cn=<string>           cn<br/>
+--alt=<string>          alternate name<br/>
+--ca=<string>           true|false (default: false)<br/>
+--password=<string>     password<br/>
+--privatekey=<string>   path to a privatekey file<br/>
+--cert=<string>         path to a certificate<br/>
+--algo=<string>         use list_cipher or list_digest<br/>
+--key=<string>          optional, used by decrypt/encrypt<br/>
+--iv=<string>           optional, used by decrypt/encrypt<br/>
+--utf16=<string>        true|false (default: false)<br/>
+--debug=<string>        true|false (default: false)<br/>
+--filename=<string>     local filename<br/>
+--s_client              will retrieve ssl information from remote host, cn=host<br/>
+--print_cert            print cert details from cert<br/>
+--print_private         print cert details from privatekey<br/>
+--print_request         print request details from filename<br/>
+--genkey                generate rsa keys public.pem and private.pem<br/>
+--hash                  hash password, using algo<br/>
+--base64encode          encode password to base64<br/>
+--base64decode          decode password to base64<br/>
+--decrypt               crypt password (hexa), using algo and optional key<br/>
+--encrypt               crypt password, using algo and optional key<br/>
+--list_cipher           list all ciphers<br/>
+--list_digest           list all digests<br/>
+--tohexa                convert a password string to hexa<br/>
+--fromhexa              convert a password hexa to string<br/>
+--encrypt_pub           encrypt a file using public.pem, read from filename<br/>
+--decrypt_priv          decrypt a file using private.pem, read from filename<br/>
+--mkcert                make a self sign root cert, read from privatekey (option) & write to filename.crt and<br/>
+                        filename.key<br/>
+--mkreq                 make a certificate service request, read from privatekey & write to filename.csr<br/>
+                        filename.key (if privatekey not specified)<br/>
+--signreq               make a certificate from a csr, read from filename and cert, write to filename.crt<br/>
+--set_password          read from privatekey and creates a new private key with a different password - if no<br/>
+                        password provided, will remove the existing password<br/>
+--dertopem              convert a binary/der private key or cert to base 64 pem format, read from cert or<br/>
+                        privatekey, write to cert.crt or privatekey.key<br/>
+--pemtoder              convert a base 64 pem format to binary/der private key or cert, read from cert or<br/>
+                        privatekey, write to cert.der or privatekey.der<br/>
+--p12topem              convert a pfx to pem, read from cert, write to cert.crt and cert.key<br/>
+--pemtop12              convert a pem to pfx, read from cert and privatekey, write to cert.pfx<br/>
+--p7topem               convert a p7b to pem, read from cert, write to cert.crt<br/>
+--pemtop7               convert a pem to p7b, read from cert, write to cert.p7b<br/>
 <br/><br/>
 Example : create a root ca (reusing a previous key), create a csr (reusing a previous key) and generate a certificate (that will work in latest chrome).<br/>
 <br/>
