@@ -59,4 +59,6 @@ rem tinySSL.exe --mkreq --debug=true --filename=request.csr<br/>
 tinySSL.exe --signreq --debug=true --alt="DNS:*.groupe.fr" --password=password --filename=request.csr --cert=ca.crt<br/>
 <br/>
 Example : turn a cert file (pem format) into a pfx<br/>
-tinyssl --pemtop12 --cert=mycert.crt --privatekey=mycert.key
+tinyssl --pemtop12 --cert=request.crt --privatekey=request.key<br/>
+Back to crt<br/>
+tinyssl --p12topem --cert=request.pfx
