@@ -94,6 +94,9 @@ begin
    log('SSL_set_fd');
    SSL_set_fd (ssl, sock);
 
+   //SSL_CTX_set_options(ssl, SSL_OP_NO_TLSv1_3);
+   //SSL_CTX_set_min_proto_version
+
    log('SSL_connect');
    err := SSL_connect (ssl);
    //if (err < 0) ...

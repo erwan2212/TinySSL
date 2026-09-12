@@ -916,6 +916,7 @@ procedure OpenSSL_add_all_algorithms;
 procedure OpenSSL_add_all_ciphers; cdecl;
 procedure OpenSSL_add_all_digests; cdecl;
 procedure EVP_cleanup(); cdecl;
+//procedure PKCS12_PBE_add_old; cdecl;
 
 function ERR_get_error: cardinal; cdecl;
 function ERR_peek_error: cardinal; cdecl;
@@ -1593,6 +1594,7 @@ function SSLeay_version; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$E
 procedure OpenSSL_add_all_algorithms_old; external LIBEAY_DLL_NAME name 'OpenSSL_add_all_algorithms' {$IFDEF USE_DELAYED}delayed{$ENDIF};
 procedure OpenSSL_add_all_algorithms_noconf; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 
+
 procedure OpenSSL_add_all_algorithms;
 var
   hLibeayDLL: THandle;
@@ -1623,6 +1625,8 @@ end;
 procedure OpenSSL_add_all_ciphers; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 procedure OpenSSL_add_all_digests; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 procedure EVP_cleanup; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
+
+//procedure PKCS12_PBE_add_old; cdecl; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 
 function ERR_get_error: cardinal; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};
 function ERR_peek_error: cardinal; external LIBEAY_DLL_NAME {$IFDEF USE_DELAYED}delayed{$ENDIF};

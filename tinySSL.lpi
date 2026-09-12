@@ -24,6 +24,7 @@
     <RunParams>
       <local>
         <FormatVersion Value="1"/>
+        <CommandLineParams Value="--tohexa --password=&quot;password&quot;"/>
       </local>
     </RunParams>
     <Units Count="5">

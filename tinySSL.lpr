@@ -247,7 +247,6 @@ begin
     exit;
   end;
 
-
   if cmd.existsProperty('tohexa')=true then
   begin
     if password='' then password:=cmd.readString('password');
@@ -262,7 +261,7 @@ begin
        setlength(s,length(input_));
        copymemory(@s[1],@input_[0],length(input_));
        writeln(s);
-       end;
+  end;
 
   if cmd.existsProperty('hash')=true then
   begin
@@ -556,6 +555,14 @@ begin
     end;
     exit;
     end;
+
+    {
+    if 1=2 then
+    begin
+    input_ := TScrypt.GetBytes('Password1310', 'NJqMLFr_qZkQ-tT80ymW4A', 16384, 8, 1, 32);
+    //writeln(ByteToHexaString(input_));
+    end;
+    }
 
 end.
 

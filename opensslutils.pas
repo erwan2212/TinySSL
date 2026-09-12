@@ -64,10 +64,16 @@ PReadKeyChar = ^ReadKeyChar;
 //see for example github.com/openssl/openssl/blob/…
 procedure LoadSSL;
 begin
+  // Initialisation des algorithmes de chiffrement et de hachage
   OpenSSL_add_all_algorithms;
   OpenSSL_add_all_ciphers;
   OpenSSL_add_all_digests;
 
+  // Charge les algorithmes PBE (Password-Based Encryption)
+  // Indispensable pour le déchiffrement des conteneurs PKCS#12 / PFX
+  //PKCS12_PBE_add_old;
+
+  // Chargement des chaînes de caractères d'erreurs OpenSSL
   ERR_load_crypto_strings;
   ERR_load_RSA_strings;
 end;
@@ -148,15 +154,15 @@ end;
 function LoadPublicKey(KeyFile: string) :pEVP_PKEY ;
 var
   mem: pBIO;
-  k: pEVP_PKEY;
+  k: pEVP_PKEY=nil;
   rc:integer=0;
 begin
   log('LoadPublicKey: '+KeyFile);
-  k:=nil;
-  mem := BIO_new(BIO_s_file()); //BIO типа файл
-  log('BIO_read_filename');
-  rc:=BIO_read_filename(mem, PAnsiChar(KeyFile)); // чтение файла ключа в BIO
-  log(inttostr(rc));
+  //mem := BIO_new(BIO_s_file()); //BIO типа файл
+  //log('BIO_read_filename');
+  //rc:=BIO_read_filename(mem, PAnsiChar(KeyFile)); // чтение файла ключа в BIO
+  //log(inttostr(rc));
+  mem := BIO_new_file(pchar(KeyFile), 'r+');
   try
     log('PEM_read_bio_PUBKEY');
     result := PEM_read_bio_PUBKEY(mem, k, nil, nil); //преобразование BIO  в структуру pEVP_PKEY, третий параметр указан nil, означает для ключа не нужно запрашивать пароль
@@ -168,12 +174,13 @@ end;
 function LoadPrivateKey(KeyFile: string;password:string='') :pEVP_PKEY;
 var
   mem: pBIO;
-  k: pEVP_PKEY;
+  k: pEVP_PKEY=nil;
 begin
+  result:=nil;
   log('LoadPrivateKey: '+KeyFile);
-  k := nil;
-  mem := BIO_new(BIO_s_file());
-  BIO_read_filename(mem, PAnsiChar(KeyFile));
+  //mem := BIO_new(BIO_s_file());
+  //BIO_read_filename(mem, PAnsiChar(KeyFile));
+  mem := BIO_new_file(pchar(KeyFile), 'r+');
   try
     log('PEM_read_bio_PrivateKey');
     if password=''
@@ -491,6 +498,7 @@ begin
   log('i2d_PKCS12_bio');
   bp := BIO_new_file(pchar(GetCurrentDir+'\'+changefileext(cert,'.pfx')), 'w+');
   err_reason:=i2d_PKCS12_bio(bp, p12_cert);
+  if err_reason<=0 then log('err_reason:'+inttostr(err_reason));
   BIO_free(bp);
 
 
@@ -750,17 +758,19 @@ end;
 function do_X509_sign(cert:pX509; pkey:pEVP_PKEY;const md:pEVP_MD):integer;
 var
 rv:integer;
-mctx:EVP_MD_CTX;
+mctx:PEVP_MD_CTX; //EVP_MD_CTX;
 pkctx:pEVP_PKEY_CTX = nil;
 begin
         log('EVP_MD_CTX_init');
-	EVP_MD_CTX_init(@mctx);
+	//EVP_MD_CTX_init(mctx);
+        mctx := EVP_MD_CTX_create();
         log('EVP_DigestSignInit');
-	rv := EVP_DigestSignInit(@mctx, @pkctx, md, nil, pkey);
+	rv := EVP_DigestSignInit(mctx, @pkctx, md, nil, pkey);
         log('X509_sign_ctx');
-	if (rv > 0) then rv := X509_sign_ctx(cert, @mctx);
+	if (rv > 0) then rv := X509_sign_ctx(cert, mctx);
         log('EVP_MD_CTX_cleanup');
-	EVP_MD_CTX_cleanup(@mctx);
+	//EVP_MD_CTX_cleanup(mctx);
+        EVP_MD_CTX_destroy(mctx);
 	if rv > 0 then result:= 1 else result:= 0;
 end;
 
@@ -1368,11 +1378,12 @@ begin
         ret:=PEM_write_bio_PUBKEY (bp_public ,pkey);
 	if ret <>1 then goto free_all;
 
-	{
+	    {
+		// 2.1 save public key to rsa -> creates the same file as above ...
         bp_public2 := BIO_new_file(pchar(GetCurrentDir+'\public_rsa.pub'), 'w+');
         log('2.1 save public key OK');
         ret:=PEM_write_bio_RSA_PUBKEY (bp_public2 ,rsa);
-	if ret <>1 then goto free_all;
+	    if ret <>1 then goto free_all;
         }
 
 	// 3. save private key
@@ -1405,7 +1416,7 @@ var
 	rsa: pRSA=nil; 
 	size: Integer;
 	FCryptedBuffer: pointer; // Выходной буфер
-	b64, mem: pBIO;
+	b64, bio_mem: pBIO;
 	str, data: AnsiString;
 	len, b64len: Integer;
 	penc64: PAnsiChar;
@@ -1425,36 +1436,36 @@ begin
   //
   if FKey=nil then exit;
   //
-	rsa := EVP_PKEY_get1_RSA(FKey); // Получение RSA структуры
-	EVP_PKEY_free(FKey); // Освобождение pEVP_PKEY
-	size := RSA_size(rsa); // Получение размера ключа
-	GetMem(FCryptedBuffer, size); // Определение размера выходящего буфера
-	str := AnsiString(sometext); // Строка для шифрования
+	rsa := EVP_PKEY_get1_RSA(FKey);
+	EVP_PKEY_free(FKey);
+	size := RSA_size(rsa);
+    log('RSA_size:'+inttostr(size));
+	GetMem(FCryptedBuffer, size);
+	str := AnsiString(sometext);
 
-	//Шифрование
-	len := RSA_public_encrypt(Length(str),  // Размер строки для шифрования
-							  PAnsiChar(str),  // Строка шифрования
-							  FCryptedBuffer,  // Выходной буфер
-							  rsa, // Структура ключа
-							  RSA_PKCS1_PADDING // Определение выравнивания
-							  );
+	//RSA_public_encrypt
+	len := RSA_public_encrypt(Length(str),
+	                          PAnsiChar(str),
+				  FCryptedBuffer,
+				  rsa,
+				  RSA_PKCS1_PADDING);
+        log('RSA_public_encrypt:'+inttostr(len));
 
-	if len > 0 then // длина буфера после шифрования
+	if len > 0 then
 	  begin
-          log(inttostr(len));
-	  // полученный бинарный буфер преобразуем в человекоподобный base64
-		b64 := BIO_new(BIO_f_base64); // BIO типа base64
+      // configure base64 filter to decode
+	        b64 := BIO_new(BIO_f_base64);
                 BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
-		mem := BIO_push(b64, BIO_new(BIO_s_mem)); // Stream
+		bio_mem := BIO_push(b64, BIO_new(BIO_s_mem)); // Stream
 		try
-			BIO_write(mem, FCryptedBuffer, len); // Запись в Stream бинарного выходного буфера
-			BIO_flush(mem);
-			b64len := BIO_get_mem_data(mem, penc64); //получаем размер строки в base64
-			SetLength(data, b64len); // задаем размер выходному буферу
-			Move(penc64^, PAnsiChar(data)^, b64len); // Перечитываем в буфер data строку в base64
+			BIO_write(bio_mem, FCryptedBuffer, len);
+			BIO_flush(bio_mem);
+			b64len := BIO_get_mem_data(bio_mem, penc64);
+			SetLength(data, b64len);
+			Move(penc64^, PAnsiChar(data)^, b64len);
                         encrypted:=data;
 		finally
-			BIO_free_all(mem);
+			BIO_free_all(bio_mem);
 		end;
 	  end
 	  else
@@ -2113,7 +2124,8 @@ begin
    //cbc requires iv
    //ecb does not require iv
    log('EVP_CIPHER_CTX_init');
-   EVP_CIPHER_CTX_init (context);
+   //EVP_CIPHER_CTX_init (context);
+   context := EVP_CIPHER_CTX_new();
    //
    //DES uses a key length of 8 bytes (64 bits).
    //DES uses an IV length of 8 bytes (64 bits).
@@ -2283,18 +2295,6 @@ i:byte;
 begin
    result:=false;
    context := EVP_MD_CTX_create();
-   {
-   //if algo='MD2' then md := EVP_md2();
-   if uppercase(algo)='MD4' then md := EVP_md4();
-   if uppercase(algo)='MD5' then md := EVP_md5();
-   if uppercase(algo)='SHA' then md := EVP_sha();
-   if uppercase(algo)='SHA1' then md := EVP_sha1();
-   if uppercase(algo)='SHA224' then md := EVP_sha224();
-   if uppercase(algo)='SHA256' then md := EVP_sha256();
-   if uppercase(algo)='SHA384' then md := EVP_sha384();
-   if uppercase(algo)='SHA512' then md := EVP_sha256();
-   if uppercase(algo)='RIPEMD160' then md := EVP_ripemd160();
-   }
 
    md:=EVP_get_digestbyname(pchar(algo));
 
