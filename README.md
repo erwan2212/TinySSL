@@ -7,21 +7,36 @@ TinySSL, aka playing with openssl library (libeay32) for digest, cipher and cert
 --ca=<string>           true|false (default: false)<br/>
 --password=<string>     password<br/>
 --privatekey=<string>   path to a privatekey file<br/>
---publickey=<string>    path to a publickey file, not needed if you have the privatekey<br/>
 --cert=<string>         path to a certificate<br/>
+--algo=<string>         use list_cipher or list_digest<br/>
+--key=<string>          optional, used by decrypt/encrypt<br/>
+--iv=<string>           optional, used by decrypt/encrypt<br/>
+--utf16=<string>        true|false (default: false)<br/>
 --debug=<string>        true|false (default: false)<br/>
 --filename=<string>     local filename<br/>
---print_cert            print cert details<br/>
---print_private         print cert details<br/>
+--s_client              will retrieve ssl information from remote host, cn=host<br/>
+--print_cert            print cert details from cert<br/>
+--print_private         print cert details from privatekey<br/>
+--print_request         print request details from filename<br/>
 --genkey                generate rsa keys public.pem and private.pem<br/>
---encrypt               encrypt a file using public.pem, read from filename<br/>
---decrypt               decrypt a file using private.pem, read from filename<br/>
+--hash                  hash password, using algo<br/>
+--base64encode          encode password to base64<br/>
+--base64decode          decode password to base64<br/>
+--decrypt               crypt password (hexa), using algo and optional key<br/>
+--encrypt               crypt password, using algo and optional key<br/>
+--list_cipher           list all ciphers<br/>
+--list_digest           list all digests<br/>
+--tohexa                convert a password string to hexa<br/>
+--fromhexa              convert a password hexa to string<br/>
+--encrypt_pub           encrypt a file using public.pem, read from filename<br/>
+--decrypt_priv          decrypt a file using private.pem, read from filename<br/>
 --mkcert                make a self sign root cert, read from privatekey (option) & write to filename.crt and<br/>
                         filename.key<br/>
 --mkreq                 make a certificate service request, read from privatekey & write to filename.csr<br/>
                         filename.key (if privatekey not specified)<br/>
 --signreq               make a certificate from a csr, read from filename and cert, write to filename.crt<br/>
---set-password          read from privatekey and creates a new private key with a different password - if no password provided, will remove the existing password<br/>
+--set_password          read from privatekey and creates a new private key with a different password - if no<br/>
+                        password provided, will remove the existing password<br/>
 --dertopem              convert a binary/der private key or cert to base 64 pem format, read from cert or<br/>
                         privatekey, write to cert.crt or privatekey.key<br/>
 --pemtoder              convert a base 64 pem format to binary/der private key or cert, read from cert or<br/>
@@ -44,4 +59,6 @@ rem tinySSL.exe --mkreq --debug=true --filename=request.csr<br/>
 tinySSL.exe --signreq --debug=true --alt="DNS:*.groupe.fr" --password=password --filename=request.csr --cert=ca.crt<br/>
 <br/>
 Example : turn a cert file (pem format) into a pfx<br/>
-tinyssl --pemtop12 --cert=mycert.crt --privatekey=mycert.key
+tinyssl --pemtop12 --cert=request.crt --privatekey=request.key<br/>
+Back to crt<br/>
+tinyssl --p12topem --cert=request.pfx
